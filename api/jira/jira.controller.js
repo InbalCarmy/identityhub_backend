@@ -2,11 +2,21 @@ import { jiraService } from './jira.service.js'
 import { userService } from '../user/user.service.js'
 import { loggerService } from '../../services/logger.service.js'
 
+// In-memory store for OAuth state tokens (with automatic cleanup)
+// Key: userId, Value: { state, expiresAt }
+const oauthStateStore = new Map()
 
-/**
- * Step 1: Initiate OAuth flow
- * Generate authorization URL and redirect user to Jira
- */
+// Clean up expired states every 10 minutes
+setInterval(() => {
+    const now = Date.now()
+    for (const [userId, data] of oauthStateStore.entries()) {
+        if (data.expiresAt < now) {
+            oauthStateStore.delete(userId)
+        }
+    }
+}, 10 * 60 * 1000)
+
+
 export async function initiateOAuth(req, res) {
     try {
         const loggedinUser = req.loggedinUser
@@ -16,36 +26,61 @@ export async function initiateOAuth(req, res) {
         // Generate random state for CSRF protection
         const state = Math.random().toString(36).substring(7)
 
-        // Store state in session (you might want to use a more robust session management)
-        // For now, we'll send it to frontend to pass back
+        // Store state with user ID and expiration (5 minutes)
+        oauthStateStore.set(loggedinUser._id.toString(), {
+            state,
+            expiresAt: Date.now() + (5 * 60 * 1000) // 5 minutes
+        })
+
         const authUrl = jiraService.getAuthorizationUrl(state)
 
-        loggerService.info(`OAuth initiated for user ${loggedinUser._id}`)
-        res.json({ authUrl, state })
+        loggerService.info(`OAuth initiated for user ${loggedinUser._id}, state: ${state}`)
+        res.json({ authUrl })
     } catch (err) {
         loggerService.error('Cannot initiate OAuth:', err)
         res.status(500).send({ err: 'Failed to initiate OAuth' })
     }
 }
 
-/**
- * Step 2: Handle OAuth callback from Jira
- * Exchange authorization code for tokens and store them
- */
+
 export async function handleOAuthCallback(req, res) {
     try {
         const { code, state } = req.query
         const loggedinUser = req.loggedinUser
 
         if (!loggedinUser) {
-            return res.status(401).send({ err: 'Not authenticated' })
+            loggerService.error('OAuth callback: User not authenticated')
+            return res.redirect(`http://localhost:5173/jira/error?message=${encodeURIComponent('Not authenticated')}`)
         }
 
         if (!code) {
-            return res.status(400).send({ err: 'Authorization code missing' })
+            loggerService.error('OAuth callback: Authorization code missing')
+            return res.redirect(`http://localhost:5173/jira/error?message=${encodeURIComponent('Authorization code missing')}`)
         }
 
-        // TODO: Validate state for CSRF protection (compare with stored state)
+        // Validate state for CSRF protection
+        const userId = loggedinUser._id.toString()
+        const storedStateData = oauthStateStore.get(userId)
+
+        if (!storedStateData) {
+            loggerService.error(`OAuth callback: No stored state found for user ${userId}`)
+            return res.redirect(`http://localhost:5173/jira/error?message=${encodeURIComponent('Invalid session. Please try connecting again.')}`)
+        }
+
+        if (storedStateData.state !== state) {
+            loggerService.error(`OAuth callback: State mismatch for user ${userId}. Expected: ${storedStateData.state}, Got: ${state}`)
+            oauthStateStore.delete(userId) // Clean up
+            return res.redirect(`http://localhost:5173/jira/error?message=${encodeURIComponent('Security validation failed. Please try again.')}`)
+        }
+
+        if (storedStateData.expiresAt < Date.now()) {
+            loggerService.error(`OAuth callback: State expired for user ${userId}`)
+            oauthStateStore.delete(userId) // Clean up
+            return res.redirect(`http://localhost:5173/jira/error?message=${encodeURIComponent('Session expired. Please try connecting again.')}`)
+        }
+
+        // State is valid, remove it from store (one-time use)
+        oauthStateStore.delete(userId)
 
         // Exchange code for tokens
         const tokens = await jiraService.exchangeCodeForTokens(code)
@@ -66,7 +101,7 @@ export async function handleOAuthCallback(req, res) {
 
         await userService.update(updatedUser)
 
-        loggerService.info(`Jira connected for user ${loggedinUser._id}`)
+        loggerService.info(`Jira connected successfully for user ${loggedinUser._id}`)
 
         res.redirect(`http://localhost:5173/jira/success`)
     } catch (err) {
