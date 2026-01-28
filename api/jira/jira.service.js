@@ -110,7 +110,10 @@ async function getCloudId(accessToken) {
 }
 
 
+
+
 async function getProjects(accessToken, cloudId) {
+
     try {
         const response = await axios.get(
             `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/project/search`,

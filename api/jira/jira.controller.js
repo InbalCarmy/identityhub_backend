@@ -187,6 +187,7 @@ export async function getProjects(req, res) {
             currentAccessToken = newTokens.access_token
         }
 
+        
         // Get projects
         const projects = await jiraService.getProjects(currentAccessToken, jiraConfig.cloudId)
 
@@ -196,6 +197,8 @@ export async function getProjects(req, res) {
         res.status(500).send({ err: err.message || 'Failed to fetch projects' })
     }
 }
+
+
 
 /**
  * Get project metadata (for form rendering)
