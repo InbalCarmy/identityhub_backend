@@ -40,6 +40,10 @@ app.use('/api/user', userRoutes)
 //     res.sendFile(path.resolve('public/index.html'))
 // })
 
+app.get('/', (req, res) => {
+    res.json({ message: 'IdentityHub API Server', version: '1.0.0' })
+})
+
 import { loggerService} from './services/logger.service.js'
 const port = process.env.PORT || 3030
 

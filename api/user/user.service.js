@@ -5,8 +5,8 @@ import { ObjectId } from 'mongodb'
 
 export const userService = {
     query,
-    getById,
-    remove,
+    // getById,
+    // remove,
     add,
     getByEmail,
     update
@@ -20,8 +20,6 @@ async function query() {
         users = users.map(user => {
             delete user.password
             user.createdAt = user._id.getTimestamp()
-            // Returning fake fresh data
-            // user.createdAt = Date.now() - (1000 * 60 * 60 * 24 * 3) // 3 days ago
             return user
         })
         return users
@@ -32,35 +30,35 @@ async function query() {
 }
 
 
-async function getById(userId) {
-    try {
-        var criteria = { _id: ObjectId.createFromHexString(userId) }
+// async function getById(userId) {
+//     try {
+//         var criteria = { _id: ObjectId.createFromHexString(userId) }
 
-        const collection = await dbService.getCollection('user')
-        const user = await collection.findOne(criteria)
-        delete user.password
+//         const collection = await dbService.getCollection('user')
+//         const user = await collection.findOne(criteria)
+//         delete user.password
 
-        criteria = { byUserId: userId }
+//         criteria = { byUserId: userId }
 
 
-        return user
-    } catch (err) {
-        loggerService.error(`while finding user by id: ${userId}`, err)
-        throw err
-    }
-}
+//         return user
+//     } catch (err) {
+//         loggerService.error(`while finding user by id: ${userId}`, err)
+//         throw err
+//     }
+// }
 
-async function remove(userId) {
-    try {
-        const criteria = { _id: ObjectId.createFromHexString(userId) }
+// async function remove(userId) {
+//     try {
+//         const criteria = { _id: ObjectId.createFromHexString(userId) }
 
-        const collection = await dbService.getCollection('user')
-        await collection.deleteOne(criteria)
-    } catch (err) {
-        loggerService.error(`cannot remove user ${userId}`, err)
-        throw err
-    }
-}
+//         const collection = await dbService.getCollection('user')
+//         await collection.deleteOne(criteria)
+//     } catch (err) {
+//         loggerService.error(`cannot remove user ${userId}`, err)
+//         throw err
+//     }
+// }
 
 async function add(user) {
     
@@ -69,7 +67,6 @@ async function add(user) {
             name: user.name,
             password: user.password,
             email: user.email,
-            isOnboarded: user.isOnboarded || false,
         }
         const collection = await dbService.getCollection('user')
         await collection.insertOne(userToAdd)
@@ -87,8 +84,6 @@ async function update(user) {
             _id: ObjectId.createFromHexString(user._id), 
             name: user.name,
             email: user.email,
-            preferences: user.preferences,
-            isOnboarded: user.isOnboarded
         }
         
         const collection = await dbService.getCollection('user')
@@ -111,18 +106,4 @@ async function getByEmail(email) {
     }
 }
 
-// function _buildCriteria(filterBy) {
-//     const criteria = {}
-//     if (filterBy.txt) {
-//         const txtCriteria = { $regex: filterBy.txt, $options: 'i' }
-//         criteria.$or = [
-//             {
-//                 name: txtCriteria,
-//             },
-//             {
-//                 email: txtCriteria,
-//             },
-//         ]
-//     }
-//     return criteria
-// }
+
