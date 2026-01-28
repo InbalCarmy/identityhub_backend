@@ -18,11 +18,7 @@ export const jiraService = {
     decryptTokens
 }
 
-/**
- * Step 1 of OAuth: Generate the authorization URL to redirect user to Jira
- * @param {string} state - Random state for CSRF protection
- * @returns {string} - Authorization URL
- */
+
 function getAuthorizationUrl(state) {
     const clientId = config.jira.clientId
     const redirectUri = config.jira.redirectUri
@@ -37,14 +33,13 @@ function getAuthorizationUrl(state) {
     authUrl.searchParams.append('response_type', 'code')
     authUrl.searchParams.append('prompt', 'consent')
 
+    console.log("url:", authUrl);
+    
+
     return authUrl.toString()
 }
 
-/**
- * Step 2 of OAuth: Exchange authorization code for access & refresh tokens
- * @param {string} code - Authorization code from Jira callback
- * @returns {Promise<object>} - Token data { access_token, refresh_token, expires_in, scope }
- */
+
 async function exchangeCodeForTokens(code) {
     const tokenUrl = 'https://auth.atlassian.com/oauth/token'
 
@@ -70,11 +65,7 @@ async function exchangeCodeForTokens(code) {
     }
 }
 
-/**
- * Refresh expired access token using refresh token
- * @param {string} refreshToken - The refresh token
- * @returns {Promise<object>} - New token data
- */
+
 async function refreshAccessToken(refreshToken) {
     const tokenUrl = 'https://auth.atlassian.com/oauth/token'
 
@@ -96,11 +87,7 @@ async function refreshAccessToken(refreshToken) {
     }
 }
 
-/**
- * Get the Jira Cloud ID (required for API calls)
- * @param {string} accessToken - OAuth access token
- * @returns {Promise<string>} - Cloud ID
- */
+
 async function getCloudId(accessToken) {
     try {
         const response = await axios.get('https://api.atlassian.com/oauth/token/accessible-resources', {
@@ -122,12 +109,7 @@ async function getCloudId(accessToken) {
     }
 }
 
-/**
- * Get all projects accessible to the user
- * @param {string} accessToken - OAuth access token
- * @param {string} cloudId - Jira cloud ID
- * @returns {Promise<Array>} - Array of projects
- */
+
 async function getProjects(accessToken, cloudId) {
     try {
         const response = await axios.get(
@@ -146,13 +128,7 @@ async function getProjects(accessToken, cloudId) {
     }
 }
 
-/**
- * Get project metadata including required fields for issue creation
- * @param {string} accessToken - OAuth access token
- * @param {string} cloudId - Jira cloud ID
- * @param {string} projectKey - Project key
- * @returns {Promise<object>} - Project metadata
- */
+
 async function getProjectMetadata(accessToken, cloudId, projectKey) {
     try {
         const response = await axios.get(
@@ -175,13 +151,7 @@ async function getProjectMetadata(accessToken, cloudId, projectKey) {
     }
 }
 
-/**
- * Create a new issue in Jira
- * @param {string} accessToken - OAuth access token
- * @param {string} cloudId - Jira cloud ID
- * @param {object} issueData - Issue data { project, summary, description, issuetype, priority, etc. }
- * @returns {Promise<object>} - Created issue data
- */
+
 async function createIssue(accessToken, cloudId, issueData) {
     try {
         const response = await axios.post(
@@ -204,14 +174,7 @@ async function createIssue(accessToken, cloudId, issueData) {
     }
 }
 
-/**
- * Get recent issues from a project
- * @param {string} accessToken - OAuth access token
- * @param {string} cloudId - Jira cloud ID
- * @param {string} projectKey - Project key
- * @param {number} maxResults - Max number of issues to return (default 10)
- * @returns {Promise<Array>} - Array of issues
- */
+
 async function getRecentIssues(accessToken, cloudId, projectKey, maxResults = 10) {
     try {
         const jql = `project = ${projectKey} ORDER BY created DESC`
@@ -237,11 +200,7 @@ async function getRecentIssues(accessToken, cloudId, projectKey, maxResults = 10
     }
 }
 
-/**
- * Encrypt tokens before storing in database
- * @param {object} tokens - { access_token, refresh_token, expires_in }
- * @returns {object} - { accessToken: encrypted, refreshToken: encrypted, expiresAt: timestamp }
- */
+
 function encryptTokens(tokens) {
     const expiresAt = Date.now() + (tokens.expires_in * 1000) // Convert seconds to milliseconds
 
@@ -252,11 +211,7 @@ function encryptTokens(tokens) {
     }
 }
 
-/**
- * Decrypt tokens from database
- * @param {object} encryptedTokens - { accessToken, refreshToken, expiresAt }
- * @returns {object} - { accessToken, refreshToken, expiresAt }
- */
+
 function decryptTokens(encryptedTokens) {
     return {
         accessToken: cryptr.decrypt(encryptedTokens.accessToken),

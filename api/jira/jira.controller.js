@@ -1,29 +1,18 @@
-import { jiraService } from '../../services/jira.service.js'
+import { jiraService } from './jira.service.js'
 import { userService } from '../user/user.service.js'
 import { loggerService } from '../../services/logger.service.js'
 
-export const jiraController = {
-    initiateOAuth,
-    handleOAuthCallback,
-    disconnect,
-    getProjects,
-    getProjectMetadata,
-    createIssue,
-    getRecentIssues,
-    getConnectionStatus
-}
 
 /**
  * Step 1: Initiate OAuth flow
  * Generate authorization URL and redirect user to Jira
  */
-async function initiateOAuth(req, res) {
+export async function initiateOAuth(req, res) {
     try {
         const loggedinUser = req.loggedinUser
         if (!loggedinUser) {
             return res.status(401).send({ err: 'Not authenticated' })
         }
-
         // Generate random state for CSRF protection
         const state = Math.random().toString(36).substring(7)
 
@@ -43,7 +32,7 @@ async function initiateOAuth(req, res) {
  * Step 2: Handle OAuth callback from Jira
  * Exchange authorization code for tokens and store them
  */
-async function handleOAuthCallback(req, res) {
+export async function handleOAuthCallback(req, res) {
     try {
         const { code, state } = req.query
         const loggedinUser = req.loggedinUser
@@ -67,7 +56,6 @@ async function handleOAuthCallback(req, res) {
         // Encrypt and prepare tokens for storage
         const encryptedTokens = jiraService.encryptTokens(tokens)
 
-        // Update user with Jira configuration
         const updatedUser = await userService.getById(loggedinUser._id)
         updatedUser.preferences = updatedUser.preferences || {}
         updatedUser.preferences.jira = {
@@ -80,7 +68,6 @@ async function handleOAuthCallback(req, res) {
 
         loggerService.info(`Jira connected for user ${loggedinUser._id}`)
 
-        // Redirect to frontend success page
         res.redirect(`http://localhost:5173/jira/success`)
     } catch (err) {
         loggerService.error('OAuth callback error:', err)
@@ -88,10 +75,8 @@ async function handleOAuthCallback(req, res) {
     }
 }
 
-/**
- * Disconnect Jira integration
- */
-async function disconnect(req, res) {
+
+ export async function disconnect(req, res) {
     try {
         const loggedinUser = req.loggedinUser
         if (!loggedinUser) {
@@ -112,10 +97,8 @@ async function disconnect(req, res) {
     }
 }
 
-/**
- * Get connection status
- */
-async function getConnectionStatus(req, res) {
+
+export async function getConnectionStatus(req, res) {
     try {
         const loggedinUser = req.loggedinUser
         if (!loggedinUser) {
@@ -135,10 +118,8 @@ async function getConnectionStatus(req, res) {
     }
 }
 
-/**
- * Get user's Jira projects
- */
-async function getProjects(req, res) {
+
+export async function getProjects(req, res) {
     try {
         const loggedinUser = req.loggedinUser
         if (!loggedinUser) {
@@ -184,7 +165,7 @@ async function getProjects(req, res) {
 /**
  * Get project metadata (for form rendering)
  */
-async function getProjectMetadata(req, res) {
+export async function getProjectMetadata(req, res) {
     try {
         const { projectKey } = req.params
         const loggedinUser = req.loggedinUser
@@ -213,7 +194,7 @@ async function getProjectMetadata(req, res) {
 /**
  * Create a new issue
  */
-async function createIssue(req, res) {
+export async function createIssue(req, res) {
     try {
         const issueData = req.body
         const loggedinUser = req.loggedinUser
@@ -243,7 +224,7 @@ async function createIssue(req, res) {
 /**
  * Get recent issues from a project
  */
-async function getRecentIssues(req, res) {
+export async function getRecentIssues(req, res) {
     try {
         const { projectKey } = req.params
         const { maxResults = 10 } = req.query

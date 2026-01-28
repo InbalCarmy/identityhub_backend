@@ -1,22 +1,21 @@
 import express from 'express'
 import { requireAuth } from '../../middlewares/requireAuth.middleware.js'
-import { jiraController } from './jira.controller.js'
+import { initiateOAuth, handleOAuthCallback, disconnect, getProjects, getProjectMetadata, createIssue, getRecentIssues, getConnectionStatus} from './jira.controller.js'
 
 const router = express.Router()
 
-// All routes require authentication
 router.use(requireAuth)
 
 // OAuth flow
-router.get('/auth', jiraController.initiateOAuth)
-router.get('/callback', jiraController.handleOAuthCallback)
-router.delete('/disconnect', jiraController.disconnect)
-router.get('/status', jiraController.getConnectionStatus)
+router.get('/auth', initiateOAuth)
+router.get('/callback', handleOAuthCallback)
+router.delete('/disconnect', disconnect)
+router.get('/status', getConnectionStatus)
 
 // Jira operations
-router.get('/projects', jiraController.getProjects)
-router.get('/projects/:projectKey/metadata', jiraController.getProjectMetadata)
-router.post('/issues', jiraController.createIssue)
-router.get('/projects/:projectKey/issues', jiraController.getRecentIssues)
+router.get('/projects', getProjects)
+router.get('/projects/:projectKey/metadata', getProjectMetadata)
+router.post('/issues', createIssue)
+router.get('/projects/:projectKey/issues', getRecentIssues)
 
 export const jiraRoutes = router
