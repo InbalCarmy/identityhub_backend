@@ -6,6 +6,7 @@ import express from 'express'
 import cookieParser from 'cookie-parser'
 import { authRoutes } from './api/auth/auth.routes.js'
 import { userRoutes } from './api/user/user.routes.js'
+import { jiraRoutes } from './api/jira/jira.routes.js'
 
 import { setupAsyncLocalStorage } from './middlewares/setupAls.middleware.js'
 
@@ -34,6 +35,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 app.use('/api/auth', authRoutes)
 app.use('/api/user', userRoutes)
+app.use('/api/jira', jiraRoutes)
 
 // // Serve the frontend for any non-API routes (MUST be last!)
 // app.get('*', (req, res) => {

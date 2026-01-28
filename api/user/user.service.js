@@ -5,7 +5,7 @@ import { ObjectId } from 'mongodb'
 
 export const userService = {
     query,
-    // getById,
+    getById,
     // remove,
     add,
     getByEmail,
@@ -30,23 +30,23 @@ async function query() {
 }
 
 
-// async function getById(userId) {
-//     try {
-//         var criteria = { _id: ObjectId.createFromHexString(userId) }
+async function getById(userId) {
+    try {
+        var criteria = { _id: ObjectId.createFromHexString(userId) }
 
-//         const collection = await dbService.getCollection('user')
-//         const user = await collection.findOne(criteria)
-//         delete user.password
+        const collection = await dbService.getCollection('user')
+        const user = await collection.findOne(criteria)
+        delete user.password
 
-//         criteria = { byUserId: userId }
+        criteria = { byUserId: userId }
 
 
-//         return user
-//     } catch (err) {
-//         loggerService.error(`while finding user by id: ${userId}`, err)
-//         throw err
-//     }
-// }
+        return user
+    } catch (err) {
+        loggerService.error(`while finding user by id: ${userId}`, err)
+        throw err
+    }
+}
 
 // async function remove(userId) {
 //     try {
@@ -79,16 +79,27 @@ async function add(user) {
 
 async function update(user) {
     try {
+        // Convert _id to ObjectId if it's a string
+        const userId = typeof user._id === 'string'
+            ? ObjectId.createFromHexString(user._id)
+            : user._id
+
         // peek only updatable properties
         const userToSave = {
-            _id: ObjectId.createFromHexString(user._id), 
             name: user.name,
             email: user.email,
         }
-        
+
+        // Include preferences if provided (for Jira tokens, etc.)
+        if (user.preferences) {
+            userToSave.preferences = user.preferences
+        }
+
         const collection = await dbService.getCollection('user')
-        await collection.updateOne({ _id: userToSave._id }, { $set: userToSave })
-        return userToSave
+        await collection.updateOne({ _id: userId }, { $set: userToSave })
+
+        // Return the updated user with original _id
+        return { ...userToSave, _id: user._id }
     } catch (err) {
         loggerService.error(`cannot update user ${user._id}`, err)
         throw err
