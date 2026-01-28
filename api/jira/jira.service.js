@@ -1,6 +1,6 @@
 import axios from 'axios'
 import Cryptr from 'cryptr'
-import { config } from '../config/index.js'
+import { config } from '../../config/index.js'
 
 // Initialize encryption for storing tokens securely
 const cryptr = new Cryptr(config.secret1)
