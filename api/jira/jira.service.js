@@ -14,6 +14,7 @@ export const jiraService = {
     getProjectMetadata,
     createIssue,
     getRecentIssues,
+    getIdentityHubTickets,
     encryptTokens,
     decryptTokens
 }
@@ -182,17 +183,18 @@ async function getRecentIssues(accessToken, cloudId, projectKey, maxResults = 10
     try {
         const jql = `project = ${projectKey} ORDER BY created DESC`
 
-        const response = await axios.get(
-            `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search`,
+        const response = await axios.post(
+            `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search/jql`,
+            {
+                jql,
+                maxResults,
+                fields: ['summary', 'created', 'status', 'key']
+            },
             {
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
-                    'Accept': 'application/json'
-                },
-                params: {
-                    jql,
-                    maxResults,
-                    fields: 'summary,created,status,key'
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
                 }
             }
         )
@@ -200,6 +202,32 @@ async function getRecentIssues(accessToken, cloudId, projectKey, maxResults = 10
     } catch (err) {
         console.error('Error getting recent issues:', err.response?.data || err.message)
         throw new Error('Failed to fetch recent issues')
+    }
+}
+
+async function getIdentityHubTickets(accessToken, cloudId, maxResults = 10) {
+    try {
+        const jql = `labels = "created-from-identityhub" ORDER BY created DESC`
+
+        const response = await axios.post(
+            `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search/jql`,
+            {
+                jql,
+                maxResults,
+                fields: ['summary', 'created', 'status', 'key', 'project']
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            }
+        )
+        return response.data.issues || []
+    } catch (err) {
+        console.error('Error getting IdentityHub tickets:', err.response?.data || err.message)
+        throw new Error('Failed to fetch IdentityHub tickets')
     }
 }
 

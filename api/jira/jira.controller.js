@@ -286,3 +286,33 @@ export async function getRecentIssues(req, res) {
         res.status(500).send({ err: err.message || 'Failed to fetch recent issues' })
     }
 }
+
+export async function getIdentityHubTickets(req, res) {
+    try {
+        const { maxResults = 10 } = req.query
+        const loggedinUser = req.loggedinUser
+
+        if (!loggedinUser) {
+            return res.status(401).send({ err: 'Not authenticated' })
+        }
+
+        const user = await userService.getById(loggedinUser._id)
+        const jiraConfig = user.preferences?.jira
+
+        if (!jiraConfig) {
+            return res.status(400).send({ err: 'Jira not connected' })
+        }
+
+        const { accessToken } = jiraService.decryptTokens(jiraConfig)
+        const issues = await jiraService.getIdentityHubTickets(
+            accessToken,
+            jiraConfig.cloudId,
+            parseInt(maxResults)
+        )
+
+        res.json(issues)
+    } catch (err) {
+        loggerService.error('Cannot get IdentityHub tickets:', err)
+        res.status(500).send({ err: err.message || 'Failed to fetch IdentityHub tickets' })
+    }
+}
