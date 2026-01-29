@@ -85,8 +85,8 @@ export async function handleOAuthCallback(req, res) {
         // Exchange code for tokens
         const tokens = await jiraService.exchangeCodeForTokens(code)
 
-        // Get cloud ID
-        const cloudId = await jiraService.getCloudId(tokens.access_token)
+        // Get cloud ID and site URL
+        const { cloudId, siteUrl } = await jiraService.getCloudId(tokens.access_token)
 
         // Encrypt and prepare tokens for storage
         const encryptedTokens = jiraService.encryptTokens(tokens)
@@ -95,6 +95,7 @@ export async function handleOAuthCallback(req, res) {
         updatedUser.preferences = updatedUser.preferences || {}
         updatedUser.preferences.jira = {
             cloudId,
+            siteUrl,
             ...encryptedTokens,
             connectedAt: new Date()
         }
@@ -145,7 +146,8 @@ export async function getConnectionStatus(req, res) {
 
         res.json({
             isConnected,
-            connectedAt: user.preferences?.jira?.connectedAt || null
+            connectedAt: user.preferences?.jira?.connectedAt || null,
+            siteUrl: user.preferences?.jira?.siteUrl || null
         })
     } catch (err) {
         loggerService.error('Cannot get connection status:', err)
@@ -252,9 +254,7 @@ export async function createIssue(req, res) {
     }
 }
 
-/**
- * Get recent issues from a project
- */
+
 export async function getRecentIssues(req, res) {
     try {
         const { projectKey } = req.params

@@ -102,8 +102,11 @@ async function getCloudId(accessToken) {
             throw new Error('No accessible Jira sites found')
         }
 
-        // Return the first site's cloud ID
-        return response.data[0].id
+        // Return both cloud ID and site URL
+        return {
+            cloudId: response.data[0].id,
+            siteUrl: response.data[0].url
+        }
     } catch (err) {
         console.error('Error getting cloud ID:', err.response?.data || err.message)
         throw new Error('Failed to get Jira cloud ID')
@@ -169,6 +172,8 @@ async function createIssue(accessToken, cloudId, issueData) {
                 }
             }
         )
+        console.log("return issue:", response.data);
+        
         return response.data
     } catch (err) {
         console.error('Error creating issue:', err.response?.data || err.message)
