@@ -151,6 +151,7 @@ async function getProjectMetadata(accessToken, cloudId, projectKey) {
                 }
             }
         )
+        console.log('Full metadata response:', JSON.stringify(response.data, null, 2))
         return response.data
     } catch (err) {
         console.error('Error getting project metadata:', err.response?.data || err.message)
@@ -172,7 +173,6 @@ async function createIssue(accessToken, cloudId, issueData) {
                 }
             }
         )
-        console.log("return issue:", response.data);
         
         return response.data
     } catch (err) {

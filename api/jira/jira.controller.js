@@ -1,6 +1,7 @@
 import { jiraService } from './jira.service.js'
 import { userService } from '../user/user.service.js'
 import { loggerService } from '../../services/logger.service.js'
+import { config } from '../../config/index.js'
 
 // In-memory store for OAuth state tokens (with automatic cleanup)
 // Key: userId, Value: { state, expiresAt }
@@ -50,12 +51,12 @@ export async function handleOAuthCallback(req, res) {
 
         if (!loggedinUser) {
             loggerService.error('OAuth callback: User not authenticated')
-            return res.redirect(`http://localhost:5173/jira/error?message=${encodeURIComponent('Not authenticated')}`)
+            return res.redirect(`${config.frontendUrl}/jira/error?message=${encodeURIComponent('Not authenticated')}`)
         }
 
         if (!code) {
             loggerService.error('OAuth callback: Authorization code missing')
-            return res.redirect(`http://localhost:5173/jira/error?message=${encodeURIComponent('Authorization code missing')}`)
+            return res.redirect(`${config.frontendUrl}/jira/error?message=${encodeURIComponent('Authorization code missing')}`)
         }
 
         // Validate state for CSRF protection
@@ -64,19 +65,19 @@ export async function handleOAuthCallback(req, res) {
 
         if (!storedStateData) {
             loggerService.error(`OAuth callback: No stored state found for user ${userId}`)
-            return res.redirect(`http://localhost:5173/jira/error?message=${encodeURIComponent('Invalid session. Please try connecting again.')}`)
+            return res.redirect(`${config.frontendUrl}/jira/error?message=${encodeURIComponent('Invalid session. Please try connecting again.')}`)
         }
 
         if (storedStateData.state !== state) {
             loggerService.error(`OAuth callback: State mismatch for user ${userId}. Expected: ${storedStateData.state}, Got: ${state}`)
             oauthStateStore.delete(userId) // Clean up
-            return res.redirect(`http://localhost:5173/jira/error?message=${encodeURIComponent('Security validation failed. Please try again.')}`)
+            return res.redirect(`${config.frontendUrl}/jira/error?message=${encodeURIComponent('Security validation failed. Please try again.')}`)
         }
 
         if (storedStateData.expiresAt < Date.now()) {
             loggerService.error(`OAuth callback: State expired for user ${userId}`)
             oauthStateStore.delete(userId) // Clean up
-            return res.redirect(`http://localhost:5173/jira/error?message=${encodeURIComponent('Session expired. Please try connecting again.')}`)
+            return res.redirect(`${config.frontendUrl}/jira/error?message=${encodeURIComponent('Session expired. Please try connecting again.')}`)
         }
 
         // State is valid, remove it from store (one-time use)
@@ -104,10 +105,10 @@ export async function handleOAuthCallback(req, res) {
 
         loggerService.info(`Jira connected successfully for user ${loggedinUser._id}`)
 
-        res.redirect(`http://localhost:5173/jira/success`)
+        res.redirect(`${config.frontendUrl}/jira/success`)
     } catch (err) {
         loggerService.error('OAuth callback error:', err)
-        res.redirect(`http://localhost:5173/jira/error?message=${encodeURIComponent(err.message)}`)
+        res.redirect(`${config.frontendUrl}/jira/error?message=${encodeURIComponent(err.message)}`)
     }
 }
 
@@ -219,7 +220,8 @@ export async function getProjectMetadata(req, res) {
 
         const { accessToken } = jiraService.decryptTokens(jiraConfig)
         const metadata = await jiraService.getProjectMetadata(accessToken, jiraConfig.cloudId, projectKey)
-
+        console.log("metadata:", metadata.projects[0].issueTypes);
+        
         res.json(metadata)
     } catch (err) {
         loggerService.error('Cannot get project metadata:', err)
