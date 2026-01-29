@@ -199,10 +199,6 @@ export async function getProjects(req, res) {
 }
 
 
-
-/**
- * Get project metadata (for form rendering)
- */
 export async function getProjectMetadata(req, res) {
     try {
         const { projectKey } = req.params
@@ -229,9 +225,6 @@ export async function getProjectMetadata(req, res) {
     }
 }
 
-/**
- * Create a new issue
- */
 export async function createIssue(req, res) {
     try {
         const issueData = req.body
