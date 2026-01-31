@@ -4,3 +4,7 @@ dist
 build
 logs/
 *.log
+
+# Documentation files
+API_DOCUMENTATION.md
+SETUP_GUIDE.md

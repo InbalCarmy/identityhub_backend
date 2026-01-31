@@ -15,6 +15,7 @@ export const jiraService = {
     createIssue,
     getRecentIssues,
     getIdentityHubTickets,
+    searchIssues,
     encryptTokens,
     decryptTokens
 }
@@ -233,6 +234,36 @@ async function getIdentityHubTickets(accessToken, cloudId, maxResults = 10) {
     } catch (err) {
         console.error('Error getting IdentityHub tickets:', err.response?.data || err.message)
         throw new Error('Failed to fetch IdentityHub tickets')
+    }
+}
+
+/**
+ * Search for issues using JQL
+ */
+async function searchIssues(accessToken, cloudId, jql, maxResults = 50) {
+    try {
+        const response = await axios.post(
+            `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search/jql`,
+            {
+                jql,
+                maxResults,
+                fields: ['summary', 'created', 'updated', 'status', 'priority', 'key', 'project']
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            }
+        )
+        return {
+            issues: response.data.issues || [],
+            total: response.data.total || 0
+        }
+    } catch (err) {
+        console.error('Error searching issues:', err.response?.data || err.message)
+        throw new Error('Failed to search issues')
     }
 }
 

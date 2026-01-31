@@ -232,8 +232,7 @@ export async function getProjectMetadata(req, res) {
 export async function createIssue(req, res) {
     try {
         const issueData = req.body
-        const loggedinUser = req.loggedinUser
-
+        const loggedinUser = req.loggedinUser    
         if (!loggedinUser) {
             return res.status(401).send({ err: 'Not authenticated' })
         }

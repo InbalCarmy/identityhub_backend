@@ -7,6 +7,8 @@ import cookieParser from 'cookie-parser'
 import { authRoutes } from './api/auth/auth.routes.js'
 import { userRoutes } from './api/user/user.routes.js'
 import { jiraRoutes } from './api/jira/jira.routes.js'
+import { apikeyRoutes } from './api/apikey/apikey.routes.js'
+import { nhiFindingsRoutes } from './api/nhi-findings/nhi-findings.routes.js'
 
 import { setupAsyncLocalStorage } from './middlewares/setupAls.middleware.js'
 
@@ -36,6 +38,8 @@ if (process.env.NODE_ENV === 'production') {
 app.use('/api/auth', authRoutes)
 app.use('/api/user', userRoutes)
 app.use('/api/jira', jiraRoutes)
+app.use('/api/apikeys', apikeyRoutes)
+app.use('/api/nhi-findings', nhiFindingsRoutes)
 
 // // Serve the frontend for any non-API routes (MUST be last!)
 // app.get('*', (req, res) => {
