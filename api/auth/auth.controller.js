@@ -27,7 +27,8 @@ export async function signup(req, res) {
         loggerService.info('User signup:', user)
 
         const loginToken = authService.getLoginToken(user)
-        res.cookie('loginToken', loginToken, { sameSite: 'None', secure: true })
+        // res.cookie('loginToken', loginToken, { sameSite: 'None', secure: true })
+        res.cookie('loginToken', loginToken, { sameSite: 'Lax', httpOnly: false })
 
         res.json(user)
     } catch (err) {

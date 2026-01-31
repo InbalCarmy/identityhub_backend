@@ -90,9 +90,9 @@ async function update(user) {
             email: user.email,
         }
 
-        // Include preferences if provided (for Jira tokens, etc.)
-        if (user.preferences) {
-            userToSave.preferences = user.preferences
+        // Include config if provided (for Jira tokens, etc.)
+        if (user.config) {
+            userToSave.config = user.config
         }
 
         const collection = await dbService.getCollection('user')

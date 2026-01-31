@@ -1,6 +1,6 @@
 import express from 'express'
 import { requireApiKey } from '../../middlewares/requireApiKey.middleware.js'
-import { createNHIFinding, getNHIFindings } from './nhi-findings.controller.js'
+import { createNHIFinding } from './nhi-findings.controller.js'
 
 const router = express.Router()
 
@@ -10,6 +10,6 @@ router.use(requireApiKey)
 router.post('/', createNHIFinding)
 
 // get all NHI findings for the authenticated user
-router.get('/', getNHIFindings)
+// router.get('/', getNHIFindings)
 
 export const nhiFindingsRoutes = router

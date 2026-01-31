@@ -2,7 +2,6 @@ import axios from 'axios'
 import Cryptr from 'cryptr'
 import { config } from '../../config/index.js'
 
-// Initialize encryption for storing tokens securely
 const cryptr = new Cryptr(config.secret1)
 
 export const jiraService = {
@@ -15,7 +14,7 @@ export const jiraService = {
     createIssue,
     getRecentIssues,
     getIdentityHubTickets,
-    searchIssues,
+    // searchIssues,
     encryptTokens,
     decryptTokens
 }
@@ -37,7 +36,6 @@ function getAuthorizationUrl(state) {
 
     console.log("url:", authUrl);
     
-
     return authUrl.toString()
 }
 
@@ -240,32 +238,32 @@ async function getIdentityHubTickets(accessToken, cloudId, maxResults = 10) {
 /**
  * Search for issues using JQL
  */
-async function searchIssues(accessToken, cloudId, jql, maxResults = 50) {
-    try {
-        const response = await axios.post(
-            `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search/jql`,
-            {
-                jql,
-                maxResults,
-                fields: ['summary', 'created', 'updated', 'status', 'priority', 'key', 'project']
-            },
-            {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                }
-            }
-        )
-        return {
-            issues: response.data.issues || [],
-            total: response.data.total || 0
-        }
-    } catch (err) {
-        console.error('Error searching issues:', err.response?.data || err.message)
-        throw new Error('Failed to search issues')
-    }
-}
+// async function searchIssues(accessToken, cloudId, jql, maxResults = 50) {
+//     try {
+//         const response = await axios.post(
+//             `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search/jql`,
+//             {
+//                 jql,
+//                 maxResults,
+//                 fields: ['summary', 'created', 'updated', 'status', 'priority', 'key', 'project']
+//             },
+//             {
+//                 headers: {
+//                     'Authorization': `Bearer ${accessToken}`,
+//                     'Accept': 'application/json',
+//                     'Content-Type': 'application/json'
+//                 }
+//             }
+//         )
+//         return {
+//             issues: response.data.issues || [],
+//             total: response.data.total || 0
+//         }
+//     } catch (err) {
+//         console.error('Error searching issues:', err.response?.data || err.message)
+//         throw new Error('Failed to search issues')
+//     }
+// }
 
 
 function encryptTokens(tokens) {

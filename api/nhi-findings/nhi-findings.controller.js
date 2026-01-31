@@ -70,7 +70,7 @@ export async function createNHIFinding(req, res) {
 
         // Get user's Jira configuration
         const user = await userService.getById(userId)
-        const jiraConfig = user.preferences?.jira
+        const jiraConfig = user.config?.jira
 
 
         if (!jiraConfig) {
@@ -92,7 +92,7 @@ export async function createNHIFinding(req, res) {
             const encrypted = jiraService.encryptTokens(newTokens)
 
             // Update user with new tokens
-            user.preferences.jira = {
+            user.config.jira = {
                 ...jiraConfig,
                 ...encrypted
             }
@@ -187,74 +187,74 @@ export async function createNHIFinding(req, res) {
  * Get NHI findings created via API for the authenticated user
  * GET /api/nhi-findings
  */
-export async function getNHIFindings(req, res) {
-    try {
-        const userId = req.apiKeyAuth.userId
-        const { maxResults = 50, projectKey } = req.query
+// export async function getNHIFindings(req, res) {
+//     try {
+//         const userId = req.apiKeyAuth.userId
+//         const { maxResults = 50, projectKey } = req.query
 
-        const user = await userService.getById(userId)
-        const jiraConfig = user.preferences?.jira
+//         const user = await userService.getById(userId)
+//         const jiraConfig = user.preferences?.jira
 
-        if (!jiraConfig) {
-            return res.status(400).json({
-                error: 'Configuration error',
-                message: 'Jira is not connected for this user'
-            })
-        }
+//         if (!jiraConfig) {
+//             return res.status(400).json({
+//                 error: 'Configuration error',
+//                 message: 'Jira is not connected for this user'
+//             })
+//         }
 
-        const { accessToken, refreshToken, expiresAt } = jiraService.decryptTokens(jiraConfig)
+//         const { accessToken, refreshToken, expiresAt } = jiraService.decryptTokens(jiraConfig)
 
-        // Check if token expired and refresh if needed
-        let currentAccessToken = accessToken
-        if (Date.now() >= expiresAt) {
-            const newTokens = await jiraService.refreshAccessToken(refreshToken)
-            const encrypted = jiraService.encryptTokens(newTokens)
+//         // Check if token expired and refresh if needed
+//         let currentAccessToken = accessToken
+//         if (Date.now() >= expiresAt) {
+//             const newTokens = await jiraService.refreshAccessToken(refreshToken)
+//             const encrypted = jiraService.encryptTokens(newTokens)
 
-            // Update user with new tokens
-            user.preferences.jira = {
-                ...jiraConfig,
-                ...encrypted
-            }
-            await userService.update(user)
+//             // Update user with new tokens
+//             user.preferences.jira = {
+//                 ...jiraConfig,
+//                 ...encrypted
+//             }
+//             await userService.update(user)
 
-            currentAccessToken = newTokens.access_token
-        }
+//             currentAccessToken = newTokens.access_token
+//         }
 
-        // Build JQL query
-        let jql = 'labels = "created-via-api" AND labels = "nhi-finding"'
-        if (projectKey) {
-            jql += ` AND project = "${projectKey}"`
-        }
-        jql += ' ORDER BY created DESC'
+//         // Build JQL query
+//         let jql = 'labels = "created-via-api" AND labels = "nhi-finding"'
+//         if (projectKey) {
+//             jql += ` AND project = "${projectKey}"`
+//         }
+//         jql += ' ORDER BY created DESC'
 
-        // Search for issues
-        const response = await jiraService.searchIssues(
-            currentAccessToken,
-            jiraConfig.cloudId,
-            jql,
-            parseInt(maxResults)
-        )
+//         // Search for issues
+//         const response = await jiraService.searchIssues(
+//             currentAccessToken,
+//             jiraConfig.cloudId,
+//             jql,
+//             parseInt(maxResults)
+//         )
 
-        const findings = response.issues.map(issue => ({
-            key: issue.key,
-            id: issue.id,
-            summary: issue.fields.summary,
-            status: issue.fields.status.name,
-            priority: issue.fields.priority?.name || 'None',
-            created: issue.fields.created,
-            updated: issue.fields.updated,
-            url: `${jiraConfig.siteUrl}/browse/${issue.key}`
-        }))
+//         const findings = response.issues.map(issue => ({
+//             key: issue.key,
+//             id: issue.id,
+//             summary: issue.fields.summary,
+//             status: issue.fields.status.name,
+//             priority: issue.fields.priority?.name || 'None',
+//             created: issue.fields.created,
+//             updated: issue.fields.updated,
+//             url: `${jiraConfig.siteUrl}/browse/${issue.key}`
+//         }))
 
-        res.json({
-            total: response.total,
-            findings
-        })
-    } catch (err) {
-        loggerService.error('Cannot get NHI findings:', err)
-        res.status(500).json({
-            error: 'Internal server error',
-            message: 'Failed to retrieve NHI findings'
-        })
-    }
-}
+//         res.json({
+//             total: response.total,
+//             findings
+//         })
+//     } catch (err) {
+//         loggerService.error('Cannot get NHI findings:', err)
+//         res.status(500).json({
+//             error: 'Internal server error',
+//             message: 'Failed to retrieve NHI findings'
+//         })
+//     }
+// }
