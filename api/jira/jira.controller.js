@@ -386,7 +386,7 @@ export async function createIssue(req, res) {
 
 export async function getIdentityHubTickets(req, res) {
     try {
-        const { maxResults = 10 } = req.query
+        const { maxResults = 10, projectKey } = req.query
         const loggedinUser = req.loggedinUser
 
         if (!loggedinUser) {
@@ -424,7 +424,8 @@ export async function getIdentityHubTickets(req, res) {
         const issues = await jiraService.getIdentityHubTickets(
             currentAccessToken,
             jiraConfig.cloudId,
-            parseInt(maxResults)
+            parseInt(maxResults),
+            projectKey || null
         )
 
         res.json(issues)

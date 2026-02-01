@@ -209,9 +209,16 @@ async function getRecentIssues(accessToken, cloudId, projectKey, maxResults = 10
     }
 }
 
-async function getIdentityHubTickets(accessToken, cloudId, maxResults = 10) {
+async function getIdentityHubTickets(accessToken, cloudId, maxResults = 10, projectKey = null) {
     try {
-        const jql = `labels = "created-from-identityhub" ORDER BY created DESC`
+        let jql = `labels = "created-from-identityhub"`
+
+        // Add project filter if projectKey is provided
+        if (projectKey) {
+            jql += ` AND project = "${projectKey}"`
+        }
+
+        jql += ` ORDER BY created DESC`
 
         const response = await axios.post(
             `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search/jql`,
