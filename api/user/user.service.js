@@ -117,4 +117,8 @@ async function getByEmail(email) {
     }
 }
 
+function _buildCriteria() {
+    // Build query criteria (currently returns empty object to get all users)
+    return {}
+}
 

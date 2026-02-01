@@ -9,6 +9,7 @@ import { userRoutes } from './api/user/user.routes.js'
 import { jiraRoutes } from './api/jira/jira.routes.js'
 import { apikeyRoutes } from './api/apikey/apikey.routes.js'
 import { nhiFindingsRoutes } from './api/nhi-findings/nhi-findings.routes.js'
+import { automationRoutes } from './api/automation/automation.routes.js'
 
 import { setupAsyncLocalStorage } from './middlewares/setupAls.middleware.js'
 
@@ -40,6 +41,7 @@ app.use('/api/user', userRoutes)
 app.use('/api/jira', jiraRoutes)
 app.use('/api/apikeys', apikeyRoutes)
 app.use('/api/nhi-findings', nhiFindingsRoutes)
+app.use('/api/automation', automationRoutes)
 
 // // Serve the frontend for any non-API routes (MUST be last!)
 // app.get('*', (req, res) => {
@@ -51,10 +53,34 @@ app.get('/', (req, res) => {
 })
 
 import { loggerService} from './services/logger.service.js'
+import { schedulerService } from './services/scheduler.service.js'
+
 const port = process.env.PORT || 3030
 
 server.listen(port, () => {
     loggerService.info('Server is running on: ' + `http://localhost:${port}/`)
+
+    // Start scheduled automation jobs
+    schedulerService.startScheduledJobs()
+})
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    loggerService.info('SIGTERM received, shutting down gracefully...')
+    schedulerService.stopScheduledJobs()
+    server.close(() => {
+        loggerService.info('Server closed')
+        process.exit(0)
+    })
+})
+
+process.on('SIGINT', () => {
+    loggerService.info('SIGINT received, shutting down gracefully...')
+    schedulerService.stopScheduledJobs()
+    server.close(() => {
+        loggerService.info('Server closed')
+        process.exit(0)
+    })
 })
 
 

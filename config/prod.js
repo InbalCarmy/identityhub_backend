@@ -13,6 +13,16 @@ export default {
             'read:jira-user',
             'offline_access'
         ]
+    },
+    openai: {
+        apiKey: process.env.OPENAI_API_KEY
+    },
+    automation: {
+        // Optional: Preferred user ID for scheduled automation tasks
+        // If not set, will use the first available user with Jira connected
+        adminUserId: process.env.AUTOMATION_ADMIN_USER_ID,
+        // Default Jira project key for blog digest tickets
+        defaultProjectKey: process.env.BLOG_DIGEST_PROJECT_KEY || 'BLOG'
     }
 }
 
