@@ -251,12 +251,66 @@ export async function getProjectMetadata(req, res) {
     }
 }
 
+/**
+ * Validation for Jira issue creation
+ */
+function validateIssueData(data) {
+    const errors = []
+
+    // Required fields
+    if (!data.project || typeof data.project !== 'object') {
+        errors.push('project is required and must be an object')
+    } else if (!data.project.key || typeof data.project.key !== 'string') {
+        errors.push('project.key is required and must be a string')
+    }
+
+    if (!data.summary || typeof data.summary !== 'string' || data.summary.trim().length === 0) {
+        errors.push('summary is required and must be a non-empty string')
+    }
+
+    if (!data.issuetype || typeof data.issuetype !== 'object') {
+        errors.push('issuetype is required and must be an object')
+    } else if (!data.issuetype.name && !data.issuetype.id) {
+        errors.push('issuetype.name or issuetype.id is required')
+    }
+
+    // Optional fields validation
+    if (data.description && typeof data.description !== 'string' && typeof data.description !== 'object') {
+        errors.push('description must be a string or an object (Atlassian Document Format)')
+    }
+
+    if (data.priority && typeof data.priority !== 'object') {
+        errors.push('priority must be an object with name or id')
+    }
+
+    if (data.labels && !Array.isArray(data.labels)) {
+        errors.push('labels must be an array of strings')
+    }
+
+
+    return {
+        isValid: errors.length === 0,
+        errors
+    }
+}
+
 export async function createIssue(req, res) {
     try {
         const issueData = req.body
         const loggedinUser = req.loggedinUser
         if (!loggedinUser) {
             return res.status(401).send({ err: 'Not authenticated' })
+        }
+
+        // Validate issue data
+        const validation = validateIssueData(issueData)
+        if (!validation.isValid) {
+            loggerService.warn(`Invalid issue data from user ${loggedinUser._id}:`, validation.errors)
+            return res.status(400).json({
+                error: 'Validation error',
+                message: 'Invalid issue data',
+                details: validation.errors
+            })
         }
 
         const user = await userService.getById(loggedinUser._id)
