@@ -43,10 +43,10 @@ app.use('/api/apikeys', apikeyRoutes)
 app.use('/api/nhi-findings', nhiFindingsRoutes)
 app.use('/api/automation', automationRoutes)
 
-// // Serve the frontend for any non-API routes (MUST be last!)
-// app.get('*', (req, res) => {
-//     res.sendFile(path.resolve('public/index.html'))
-// })
+// Serve the frontend for any non-API routes (MUST be last!)
+app.get('*', (req, res) => {
+    res.sendFile(path.resolve('public/index.html'))
+})
 
 app.get('/', (req, res) => {
     res.json({ message: 'IdentityHub API Server', version: '1.0.0' })
