@@ -15,8 +15,6 @@ function startScheduledJobs() {
     loggerService.info('Starting scheduled automation jobs...')
 
     // Schedule: Run blog digest every Monday at 9:00 AM
-    // Cron format: minute hour day-of-month month day-of-week
-    // '0 9 * * 1' = At 9:00 AM every Monday
     const blogDigestJob = cron.schedule('0 9 * * 1', async () => {
         loggerService.info('Triggered: Weekly Blog Digest (Monday 9:00 AM)')
         try {
@@ -48,5 +46,5 @@ function stopScheduledJobs() {
         job.job.stop()
     })
     scheduledJobs = []
-    loggerService.info('✓ All scheduled jobs stopped')
+    loggerService.info('All scheduled jobs stopped')
 }
