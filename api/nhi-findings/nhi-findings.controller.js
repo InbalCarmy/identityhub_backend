@@ -70,14 +70,31 @@ export async function createNHIFinding(req, res) {
 
         // Get user's Jira configuration
         const user = await userService.getById(userId)
-        const jiraConfig = user.config?.jira
 
+        if (!user) {
+            loggerService.error(`User ${userId} not found`)
+            return res.status(404).json({
+                error: 'User not found',
+                message: 'The user associated with this API key no longer exists'
+            })
+        }
+
+        const jiraConfig = user.config?.jira
 
         if (!jiraConfig) {
             loggerService.warn(`User ${userId} attempted to create NHI finding without Jira connection`)
             return res.status(400).json({
                 error: 'Configuration error',
                 message: 'Jira is not connected for this user. Please connect Jira through the web interface first.'
+            })
+        }
+
+        // Validate jiraConfig has required fields
+        if (!jiraConfig.accessToken || !jiraConfig.refreshToken || !jiraConfig.expiresAt) {
+            loggerService.error(`User ${userId} has incomplete Jira configuration:`, jiraConfig)
+            return res.status(500).json({
+                error: 'Configuration error',
+                message: 'Jira configuration is corrupted. Please reconnect Jira through the web interface.'
             })
         }
 
@@ -101,8 +118,6 @@ export async function createNHIFinding(req, res) {
             currentAccessToken = newTokens.access_token
             loggerService.info(`Access token refreshed for user ${userId}`)
         }
-
-        console.log("access token:", currentAccessToken);
         
 
         // Build Jira issue data
@@ -146,7 +161,6 @@ export async function createNHIFinding(req, res) {
         ]
 
         const issue = await jiraService.createIssue(currentAccessToken, jiraConfig.cloudId, issueData)
-        console.log("issue:", issue);
         
         loggerService.info(`NHI finding created via API: ${issue.key} by user ${userId}`)
 
@@ -183,78 +197,3 @@ export async function createNHIFinding(req, res) {
     }
 }
 
-/**
- * Get NHI findings created via API for the authenticated user
- * GET /api/nhi-findings
- */
-// export async function getNHIFindings(req, res) {
-//     try {
-//         const userId = req.apiKeyAuth.userId
-//         const { maxResults = 50, projectKey } = req.query
-
-//         const user = await userService.getById(userId)
-//         const jiraConfig = user.preferences?.jira
-
-//         if (!jiraConfig) {
-//             return res.status(400).json({
-//                 error: 'Configuration error',
-//                 message: 'Jira is not connected for this user'
-//             })
-//         }
-
-//         const { accessToken, refreshToken, expiresAt } = jiraService.decryptTokens(jiraConfig)
-
-//         // Check if token expired and refresh if needed
-//         let currentAccessToken = accessToken
-//         if (Date.now() >= expiresAt) {
-//             const newTokens = await jiraService.refreshAccessToken(refreshToken)
-//             const encrypted = jiraService.encryptTokens(newTokens)
-
-//             // Update user with new tokens
-//             user.preferences.jira = {
-//                 ...jiraConfig,
-//                 ...encrypted
-//             }
-//             await userService.update(user)
-
-//             currentAccessToken = newTokens.access_token
-//         }
-
-//         // Build JQL query
-//         let jql = 'labels = "created-via-api" AND labels = "nhi-finding"'
-//         if (projectKey) {
-//             jql += ` AND project = "${projectKey}"`
-//         }
-//         jql += ' ORDER BY created DESC'
-
-//         // Search for issues
-//         const response = await jiraService.searchIssues(
-//             currentAccessToken,
-//             jiraConfig.cloudId,
-//             jql,
-//             parseInt(maxResults)
-//         )
-
-//         const findings = response.issues.map(issue => ({
-//             key: issue.key,
-//             id: issue.id,
-//             summary: issue.fields.summary,
-//             status: issue.fields.status.name,
-//             priority: issue.fields.priority?.name || 'None',
-//             created: issue.fields.created,
-//             updated: issue.fields.updated,
-//             url: `${jiraConfig.siteUrl}/browse/${issue.key}`
-//         }))
-
-//         res.json({
-//             total: response.total,
-//             findings
-//         })
-//     } catch (err) {
-//         loggerService.error('Cannot get NHI findings:', err)
-//         res.status(500).json({
-//             error: 'Internal server error',
-//             message: 'Failed to retrieve NHI findings'
-//         })
-//     }
-// }

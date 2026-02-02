@@ -6,7 +6,6 @@ import { ObjectId } from 'mongodb'
 export const userService = {
     query,
     getById,
-    // remove,
     add,
     getByEmail,
     update
@@ -48,17 +47,6 @@ async function getById(userId) {
     }
 }
 
-// async function remove(userId) {
-//     try {
-//         const criteria = { _id: ObjectId.createFromHexString(userId) }
-
-//         const collection = await dbService.getCollection('user')
-//         await collection.deleteOne(criteria)
-//     } catch (err) {
-//         loggerService.error(`cannot remove user ${userId}`, err)
-//         throw err
-//     }
-// }
 
 async function add(user) {
     
@@ -118,7 +106,6 @@ async function getByEmail(email) {
 }
 
 function _buildCriteria() {
-    // Build query criteria (currently returns empty object to get all users)
     return {}
 }
 

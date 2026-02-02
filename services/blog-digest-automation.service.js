@@ -13,149 +13,182 @@ export const blogDigestAutomationService = {
     runBlogDigest
 }
 
-/**
- * Main automation function that orchestrates the blog digest workflow
- * @param {string} userId - Optional user ID to use for Jira. If not provided, finds first user with Jira connected
- * @returns {Promise<Object>} Result of the automation run
- */
+/* Main automation function that orchestrates the blog digest workflow */
 async function runBlogDigest(userId = null) {
     const startTime = Date.now()
-    loggerService.info('========================================')
-    loggerService.info('Starting NHI Blog Digest Automation')
-    loggerService.info('========================================')
 
     try {
-        // Step 1: Fetch the latest blog post
-        loggerService.info('Step 1: Fetching latest blog post...')
-        const blogPost = await blogScraperService.getLatestBlogPost()
-        loggerService.info(`✓ Blog post fetched: "${blogPost.title}"`)
+        // Step 1: Fetch and summarize blog post
+        const blogPost = await fetchBlogPost()
+        const summary = await generateSummary(blogPost)
 
-        // Step 2: Generate AI summary
-        loggerService.info('Step 2: Generating AI-powered summary...')
-        const summary = await aiSummaryService.generateBlogSummary(blogPost)
-        loggerService.info(`✓ AI summary generated (${summary.length} characters)`)
+        // Step 2: Get user and authenticate with Jira
+        const user = await getUserForAutomation(userId)
+        const accessToken = await getValidAccessToken(user)
 
-        // Step 3: Get user with Jira credentials
-        loggerService.info('Step 3: Retrieving user credentials...')
+        // Step 3: Create Jira ticket
+        const { issue, issueUrl } = await createJiraTicket(user, blogPost, summary, accessToken)
 
-        let user
-        if (userId) {
-            // Use specific user if provided
-            user = await userService.getById(userId)
-            if (!user || !user.config?.jira) {
-                throw new Error('User not found or Jira not connected')
-            }
-            loggerService.info(`Using user: ${user.email || user._id}`)
-        } else {
-            // For scheduled runs: find first user with Jira connected
-            // First try configured admin user
-            const adminUserId = config.automation?.adminUserId
-            if (adminUserId) {
-                user = await userService.getById(adminUserId)
-                if (user && user.config?.jira) {
-                    loggerService.info(`Using configured admin user: ${user.email || user._id}`)
-                }
-            }
-
-            // If no admin user or admin doesn't have Jira, find any user with Jira
-            if (!user || !user.config?.jira) {
-                loggerService.info('Finding first user with Jira connected...')
-                user = await findUserWithJira()
-                if (!user) {
-                    throw new Error('No users with Jira connected found. At least one user must connect Jira for automation to work.')
-                }
-                loggerService.info(`Using user: ${user.email || user._id}`)
-            }
-        }
-
-        // Decrypt Jira tokens
-        const { accessToken, refreshToken, expiresAt } = jiraService.decryptTokens(user.config.jira)
-
-        // Check if token needs refresh
-        let currentAccessToken = accessToken
-        if (Date.now() >= expiresAt) {
-            loggerService.info('Access token expired, refreshing...')
-            const newTokens = await jiraService.refreshAccessToken(refreshToken)
-            const encrypted = jiraService.encryptTokens(newTokens)
-
-            user.config.jira = {
-                ...user.config.jira,
-                ...encrypted
-            }
-            await userService.update(user)
-
-            currentAccessToken = newTokens.access_token
-            loggerService.info('✓ Access token refreshed')
-        }
-
-        loggerService.info('✓ User authenticated')
-
-        // Step 4: Create Jira ticket
-        loggerService.info('Step 4: Creating Jira ticket...')
-
-        const projectKey = config.automation?.defaultProjectKey || 'BLOG'
-
-        // Get the first available project if default doesn't exist
-        const projects = await jiraService.getProjects(currentAccessToken, user.config.jira.cloudId)
-
-        if (projects.length === 0) {
-            throw new Error('No Jira projects available')
-        }
-
-        // Use configured project or first available project
-        const project = projects.find(p => p.key === projectKey) || projects[0]
-
-        loggerService.info(`Using Jira project: ${project.name} (${project.key})`)
-
-        // Prepare Jira issue data
-        const issueData = {
-            project: {
-                key: project.key
-            },
-            summary: `[Blog Digest] ${blogPost.title}`,
-            description: formatJiraDescription(blogPost, summary),
-            issuetype: {
-                name: 'Task' // Default to Task, can be configured
-            },
-            labels: ['blog-digest', 'automation', 'nhi', 'created-from-identityhub']
-        }
-
-        const createdIssue = await jiraService.createIssue(
-            currentAccessToken,
-            user.config.jira.cloudId,
-            issueData
-        )
-
-        const issueUrl = `${user.config.jira.siteUrl}/browse/${createdIssue.key}`
-
-        loggerService.info(`✓ Jira ticket created: ${createdIssue.key}`)
-        loggerService.info(`  URL: ${issueUrl}`)
-
-        // Success!
+        // Step 4: Return success result
         const duration = ((Date.now() - startTime) / 1000).toFixed(2)
-        loggerService.info('========================================')
-        loggerService.info(`✓ Blog Digest Automation Completed in ${duration}s`)
-        loggerService.info('========================================')
+        loggerService.info(`Blog Digest Automation Completed in ${duration}s`)
 
-        return {
-            success: true,
-            blogPost: {
-                title: blogPost.title,
-                url: blogPost.url
-            },
-            jiraTicket: {
-                key: createdIssue.key,
-                url: issueUrl
-            },
-            duration: `${duration}s`
-        }
+        return buildSuccessResult(blogPost, issue, issueUrl, duration)
 
     } catch (err) {
-        loggerService.error('========================================')
-        loggerService.error('✗ Blog Digest Automation Failed')
+        loggerService.error('Blog Digest Automation Failed')
         loggerService.error(`Error: ${err.message}`)
-        loggerService.error('========================================')
         throw err
+    }
+}
+
+/* Fetches the latest blog post */
+async function fetchBlogPost() {
+    loggerService.info('Step 1: Fetching latest blog post')
+    const blogPost = await blogScraperService.getLatestBlogPost()
+    loggerService.info(`Blog post fetched: "${blogPost.title}"`)
+    return blogPost
+}
+
+/* Generates AI summary for a blog post */
+async function generateSummary(blogPost) {
+    loggerService.info('Step 2: Generating AI-powered summary')
+    const summary = await aiSummaryService.generateBlogSummary(blogPost)
+    loggerService.info(`AI summary generated (${summary.length} characters)`)
+    return summary
+}
+
+/* Gets the user to use for automation */
+async function getUserForAutomation(userId) {
+    loggerService.info('Step 3: Retrieving user credentials')
+
+    if (userId) {
+        return await getSpecificUser(userId)
+    } else {
+        return await getAutomationUser()
+    }
+}
+
+/* Gets a specific user by ID and validates Jira connection */
+async function getSpecificUser(userId) {
+    const user = await userService.getById(userId)
+    if (!user || !user.config?.jira) {
+        throw new Error('User not found or Jira not connected')
+    }
+    loggerService.info(`Using user: ${user.email || user._id}`)
+    return user
+}
+
+/* Gets the configured admin user or first user with Jira for scheduled automation */
+async function getAutomationUser() {
+    // First try configured admin user
+    const adminUserId = config.automation?.adminUserId
+    if (adminUserId) {
+        const adminUser = await userService.getById(adminUserId)
+        if (adminUser && adminUser.config?.jira) {
+            loggerService.info(`Using configured admin user: ${adminUser.email || adminUser._id}`)
+            return adminUser
+        }
+    }
+
+    // If no admin user or admin doesn't have Jira, find any user with Jira
+    loggerService.info('Finding first user with Jira connected...')
+    const user = await findUserWithJira()
+    if (!user) {
+        throw new Error('No users with Jira connected found. At least one user must connect Jira for automation to work.')
+    }
+    loggerService.info(`Using user: ${user.email || user._id}`)
+    return user
+}
+
+/* Gets a valid access token, refreshing if necessary */
+async function getValidAccessToken(user) {
+    const { accessToken, refreshToken, expiresAt } = jiraService.decryptTokens(user.config.jira)
+
+    if (Date.now() < expiresAt) {
+        loggerService.info('User authenticated')
+        return accessToken
+    }
+
+    // Token expired, refresh it
+    loggerService.info('Access token expired, refreshing...')
+    const newTokens = await jiraService.refreshAccessToken(refreshToken)
+    const encrypted = jiraService.encryptTokens(newTokens)
+
+    user.config.jira = {
+        ...user.config.jira,
+        ...encrypted
+    }
+    await userService.update(user)
+
+    loggerService.info('Access token refreshed')
+    return newTokens.access_token
+}
+
+/* Creates a Jira ticket for the blog digest */
+async function createJiraTicket(user, blogPost, summary, accessToken) {
+    loggerService.info('Step 4: Creating Jira ticket')
+
+    const project = await selectJiraProject(accessToken, user.config.jira.cloudId)
+    const issueData = buildIssueData(project, blogPost, summary)
+
+    const createdIssue = await jiraService.createIssue(
+        accessToken,
+        user.config.jira.cloudId,
+        issueData
+    )
+
+    const issueUrl = `${user.config.jira.siteUrl}/browse/${createdIssue.key}`
+
+    loggerService.info(`Jira ticket created: ${createdIssue.key}`)
+    loggerService.info(`  URL: ${issueUrl}`)
+
+    return { issue: createdIssue, issueUrl }
+}
+
+/* Selects the Jira project to use */
+async function selectJiraProject(accessToken, cloudId) {
+    const projectKey = config.automation?.defaultProjectKey || 'BLOG'
+    const projects = await jiraService.getProjects(accessToken, cloudId)
+
+    if (projects.length === 0) {
+        throw new Error('No Jira projects available')
+    }
+
+    const project = projects.find(p => p.key === projectKey) || projects[0]
+    loggerService.info(`Using Jira project: ${project.name} (${project.key})`)
+
+    return project
+}
+
+/* Builds the Jira issue data object */
+function buildIssueData(project, blogPost, summary) {
+    return {
+        project: {
+            key: project.key
+        },
+        summary: `[Blog Digest] ${blogPost.title}`,
+        description: formatJiraDescription(blogPost, summary),
+        issuetype: {
+            name: 'Task'
+        },
+        labels: ['blog-digest', 'automation', 'nhi', 'created-from-identityhub']
+    }
+}
+
+/* Builds the success result object */
+function buildSuccessResult(blogPost, issue, issueUrl, duration) {
+    return {
+        success: true,
+        blogPost: {
+            title: blogPost.title,
+            url: blogPost.url
+        },
+        jiraTicket: {
+            key: issue.key,
+            url: issueUrl
+        },
+        duration: `${duration}s`
     }
 }
 

@@ -9,14 +9,7 @@ export const aiSummaryService = {
     generateBlogSummary
 }
 
-/**
- * Generates a concise summary of a blog post using AI
- * @param {Object} blogPost - The blog post object with title and content
- * @param {string} blogPost.title - Blog post title
- * @param {string} blogPost.content - Blog post content
- * @param {string} blogPost.url - Blog post URL
- * @returns {Promise<string>} The AI-generated summary
- */
+/* Generates a concise summary of a blog post using AI */
 async function generateBlogSummary(blogPost) {
     try {
         loggerService.info(`Generating AI summary for blog post: "${blogPost.title}"`)

@@ -14,7 +14,6 @@ export const jiraService = {
     createIssue,
     getRecentIssues,
     getIdentityHubTickets,
-    // searchIssues,
     encryptTokens,
     decryptTokens
 }
@@ -242,35 +241,7 @@ async function getIdentityHubTickets(accessToken, cloudId, maxResults = 10, proj
     }
 }
 
-/**
- * Search for issues using JQL
- */
-// async function searchIssues(accessToken, cloudId, jql, maxResults = 50) {
-//     try {
-//         const response = await axios.post(
-//             `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search/jql`,
-//             {
-//                 jql,
-//                 maxResults,
-//                 fields: ['summary', 'created', 'updated', 'status', 'priority', 'key', 'project']
-//             },
-//             {
-//                 headers: {
-//                     'Authorization': `Bearer ${accessToken}`,
-//                     'Accept': 'application/json',
-//                     'Content-Type': 'application/json'
-//                 }
-//             }
-//         )
-//         return {
-//             issues: response.data.issues || [],
-//             total: response.data.total || 0
-//         }
-//     } catch (err) {
-//         console.error('Error searching issues:', err.response?.data || err.message)
-//         throw new Error('Failed to search issues')
-//     }
-// }
+
 
 
 function encryptTokens(tokens) {
@@ -285,9 +256,21 @@ function encryptTokens(tokens) {
 
 
 function decryptTokens(encryptedTokens) {
-    return {
-        accessToken: cryptr.decrypt(encryptedTokens.accessToken),
-        refreshToken: cryptr.decrypt(encryptedTokens.refreshToken),
-        expiresAt: encryptedTokens.expiresAt
+    if (!encryptedTokens) {
+        throw new Error('Encrypted tokens object is null or undefined')
+    }
+
+    if (!encryptedTokens.accessToken || !encryptedTokens.refreshToken || !encryptedTokens.expiresAt) {
+        throw new Error('Encrypted tokens object is missing required fields')
+    }
+
+    try {
+        return {
+            accessToken: cryptr.decrypt(encryptedTokens.accessToken),
+            refreshToken: cryptr.decrypt(encryptedTokens.refreshToken),
+            expiresAt: encryptedTokens.expiresAt
+        }
+    } catch (err) {
+        throw new Error(`Failed to decrypt tokens: ${err.message}`)
     }
 }

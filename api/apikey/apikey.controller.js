@@ -26,7 +26,7 @@ export async function generateKey(req, res) {
             name.trim()
         )
 
-        // The onlyvtime the plain API key is shown
+        // The only time the plain API key is shown
         res.status(201).json({
             message: 'API key created successfully. Save it now - you won\'t be able to see it again!',
             apiKey: apiKeyData.apiKey,

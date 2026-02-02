@@ -16,7 +16,6 @@ router.get('/status', getConnectionStatus)
 router.get('/projects', getProjects)
 router.get('/projects/:projectKey/metadata', getProjectMetadata)
 router.post('/issues', createIssue)
-// router.get('/projects/:projectKey/issues', getRecentIssues)
 router.get('/identityhub-tickets', getIdentityHubTickets)
 
 export const jiraRoutes = router

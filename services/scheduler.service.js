@@ -35,24 +35,6 @@ function startScheduledJobs() {
         job: blogDigestJob
     })
 
-    ////  run daily at 8:00 AM
-    // const dailyDigestJob = cron.schedule('0 8 * * *', async () => {
-    //     loggerService.info('Triggered: Daily Blog Digest (8:00 AM)')
-    //     try {
-    //         await blogDigestAutomationService.runBlogDigest()
-    //     } catch (err) {
-    //         loggerService.error('Scheduled blog digest failed:', err)
-    //     }
-    // }, {
-    //     scheduled: true,
-    //     timezone: 'UTC'
-    // })
-    // scheduledJobs.push({
-    //     name: 'Daily Blog Digest',
-    //     schedule: 'Every day at 8:00 AM UTC',
-    //     job: dailyDigestJob
-    // })
-
     loggerService.info(`✓ Started ${scheduledJobs.length} scheduled job(s):`)
     scheduledJobs.forEach(job => {
         loggerService.info(`  - ${job.name}: ${job.schedule}`)
@@ -68,15 +50,3 @@ function stopScheduledJobs() {
     scheduledJobs = []
     loggerService.info('✓ All scheduled jobs stopped')
 }
-
-/**
- * Common cron schedule examples:
- *
- * Every minute:        '* * * * *'
- * Every 5 minutes:     '*//* 5 * * * *'
- * Every hour:          '0 * * * *'
- * Every day at 9 AM:   '0 9 * * *'
- * Every Monday 9 AM:   '0 9 * * 1'
- * Every 1st of month:  '0 9 1 * *'
- * Weekdays at 9 AM:    '0 9 * * 1-5'
- */

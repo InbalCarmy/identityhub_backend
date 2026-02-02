@@ -17,6 +17,47 @@ setInterval(() => {
     }
 }, 10 * 60 * 1000)
 
+/**
+ * Helper function to get and refresh Jira access token if needed
+ */
+async function getValidJiraToken(loggedinUser) {
+    if (!loggedinUser) {
+        throw new Error('Not authenticated')
+    }
+
+    const user = await userService.getById(loggedinUser._id)
+    const jiraConfig = user.config?.jira
+
+    if (!jiraConfig) {
+        throw new Error('Jira not connected')
+    }
+
+    const { accessToken, refreshToken, expiresAt } = jiraService.decryptTokens(jiraConfig)
+
+    // Check if token expired and refresh if needed
+    let currentAccessToken = accessToken
+    if (Date.now() >= expiresAt) {
+        loggerService.info(`Access token expired for user ${loggedinUser._id}, refreshing...`)
+        const newTokens = await jiraService.refreshAccessToken(refreshToken)
+        const encrypted = jiraService.encryptTokens(newTokens)
+
+        // Update user with new tokens
+        user.config.jira = {
+            ...jiraConfig,
+            ...encrypted
+        }
+        await userService.update(user)
+
+        currentAccessToken = newTokens.access_token
+        loggerService.info(`Access token refreshed for user ${loggedinUser._id}`)
+    }
+
+    return {
+        user,
+        accessToken: currentAccessToken,
+        jiraConfig
+    }
+}
 
 export async function initiateOAuth(req, res) {
     try {
@@ -159,46 +200,22 @@ export async function getConnectionStatus(req, res) {
 
 export async function getProjects(req, res) {
     try {
-        const loggedinUser = req.loggedinUser
-        if (!loggedinUser) {
-            return res.status(401).send({ err: 'Not authenticated' })
-        }
-
-        const user = await userService.getById(loggedinUser._id)
-        const jiraConfig = user.config?.jira
-
-        if (!jiraConfig) {
-            return res.status(400).send({ err: 'Jira not connected' })
-        }
-
-        // Decrypt tokens
-        const { accessToken, refreshToken, expiresAt } = jiraService.decryptTokens(jiraConfig)
-
-        // Check if token expired and refresh if needed
-        let currentAccessToken = accessToken
-        if (Date.now() >= expiresAt) {
-            loggerService.info(`Access token expired for user ${loggedinUser._id}, refreshing...`)
-            const newTokens = await jiraService.refreshAccessToken(refreshToken)
-            const encrypted = jiraService.encryptTokens(newTokens)
-
-            // Update user with new tokens
-            user.config.jira = {
-                ...jiraConfig,
-                ...encrypted
-            }
-            await userService.update(user)
-
-            currentAccessToken = newTokens.access_token
-            loggerService.info(`Access token refreshed for user ${loggedinUser._id}`)
-        }
-
+        const { accessToken, jiraConfig } = await getValidJiraToken(req.loggedinUser)
 
         // Get projects
-        const projects = await jiraService.getProjects(currentAccessToken, jiraConfig.cloudId)
+        const projects = await jiraService.getProjects(accessToken, jiraConfig.cloudId)
 
         res.json(projects)
     } catch (err) {
         loggerService.error('Cannot get projects:', err)
+
+        if (err.message === 'Not authenticated') {
+            return res.status(401).send({ err: 'Not authenticated' })
+        }
+        if (err.message === 'Jira not connected') {
+            return res.status(400).send({ err: 'Jira not connected' })
+        }
+
         res.status(500).send({ err: err.message || 'Failed to fetch projects' })
     }
 }
@@ -207,53 +224,27 @@ export async function getProjects(req, res) {
 export async function getProjectMetadata(req, res) {
     try {
         const { projectKey } = req.params
-        const loggedinUser = req.loggedinUser
+        const { accessToken, jiraConfig } = await getValidJiraToken(req.loggedinUser)
 
-        if (!loggedinUser) {
-            return res.status(401).send({ err: 'Not authenticated' })
-        }
-
-        const user = await userService.getById(loggedinUser._id)
-        const jiraConfig = user.config?.jira
-
-        if (!jiraConfig) {
-            return res.status(400).send({ err: 'Jira not connected' })
-        }
-
-        const { accessToken, refreshToken, expiresAt } = jiraService.decryptTokens(jiraConfig)
-
-        // Check if token expired and refresh if needed
-        let currentAccessToken = accessToken
-        if (Date.now() >= expiresAt) {
-            loggerService.info(`Access token expired for user ${loggedinUser._id}, refreshing...`)
-            const newTokens = await jiraService.refreshAccessToken(refreshToken)
-            const encrypted = jiraService.encryptTokens(newTokens)
-
-            // Update user with new tokens
-            user.config.jira = {
-                ...jiraConfig,
-                ...encrypted
-            }
-            await userService.update(user)
-
-            currentAccessToken = newTokens.access_token
-            loggerService.info(`Access token refreshed for user ${loggedinUser._id}`)
-        }
-
-
-        const metadata = await jiraService.getProjectMetadata(currentAccessToken, jiraConfig.cloudId, projectKey)
+        const metadata = await jiraService.getProjectMetadata(accessToken, jiraConfig.cloudId, projectKey)
         console.log("metadata:", metadata.projects[0].issueTypes);
-        
+
         res.json(metadata)
     } catch (err) {
         loggerService.error('Cannot get project metadata:', err)
+
+        if (err.message === 'Not authenticated') {
+            return res.status(401).send({ err: 'Not authenticated' })
+        }
+        if (err.message === 'Jira not connected') {
+            return res.status(400).send({ err: 'Jira not connected' })
+        }
+
         res.status(500).send({ err: err.message || 'Failed to fetch project metadata' })
     }
 }
 
-/**
- * Validation for Jira issue creation
- */
+
 function validateIssueData(data) {
     const errors = []
 
@@ -297,15 +288,11 @@ function validateIssueData(data) {
 export async function createIssue(req, res) {
     try {
         const issueData = req.body
-        const loggedinUser = req.loggedinUser
-        if (!loggedinUser) {
-            return res.status(401).send({ err: 'Not authenticated' })
-        }
 
         // Validate issue data
         const validation = validateIssueData(issueData)
         if (!validation.isValid) {
-            loggerService.warn(`Invalid issue data from user ${loggedinUser._id}:`, validation.errors)
+            loggerService.warn(`Invalid issue data:`, validation.errors)
             return res.status(400).json({
                 error: 'Validation error',
                 message: 'Invalid issue data',
@@ -313,116 +300,36 @@ export async function createIssue(req, res) {
             })
         }
 
-        const user = await userService.getById(loggedinUser._id)
-        const jiraConfig = user.config?.jira
+        const { accessToken, jiraConfig } = await getValidJiraToken(req.loggedinUser)
 
-        if (!jiraConfig) {
-            return res.status(400).send({ err: 'Jira not connected' })
-        }
+        const issue = await jiraService.createIssue(accessToken, jiraConfig.cloudId, issueData)
 
-        // Decrypt tokens
-        const { accessToken, refreshToken, expiresAt } = jiraService.decryptTokens(jiraConfig)
-
-        // Check if token expired and refresh if needed
-        let currentAccessToken = accessToken
-        if (Date.now() >= expiresAt) {
-            loggerService.info(`Access token expired for user ${loggedinUser._id}, refreshing...`)
-            const newTokens = await jiraService.refreshAccessToken(refreshToken)
-            const encrypted = jiraService.encryptTokens(newTokens)
-
-            // Update user with new tokens
-            user.config.jira = {
-                ...jiraConfig,
-                ...encrypted
-            }
-            await userService.update(user)
-
-            currentAccessToken = newTokens.access_token
-            loggerService.info(`Access token refreshed for user ${loggedinUser._id}`)
-        }
-
-        const issue = await jiraService.createIssue(currentAccessToken, jiraConfig.cloudId, issueData)
-
-        loggerService.info(`Issue created: ${issue.key} for user ${loggedinUser._id}`)
+        loggerService.info(`Issue created: ${issue.key}`)
         res.json(issue)
     } catch (err) {
         loggerService.error('Cannot create issue:', err)
+
+        if (err.message === 'Not authenticated') {
+            return res.status(401).send({ err: 'Not authenticated' })
+        }
+        if (err.message === 'Jira not connected') {
+            return res.status(400).send({ err: 'Jira not connected' })
+        }
+
         res.status(500).send({ err: err.message || 'Failed to create issue' })
     }
 }
 
 
-// export async function getRecentIssues(req, res) {
-//     try {
-//         const { projectKey } = req.params
-//         const { maxResults = 10 } = req.query
-//         const loggedinUser = req.loggedinUser
 
-//         if (!loggedinUser) {
-//             return res.status(401).send({ err: 'Not authenticated' })
-//         }
-
-//         const user = await userService.getById(loggedinUser._id)
-//         const jiraConfig = user.preferences?.jira
-
-//         if (!jiraConfig) {
-//             return res.status(400).send({ err: 'Jira not connected' })
-//         }
-
-//         const { accessToken } = jiraService.decryptTokens(jiraConfig)
-//         const issues = await jiraService.getRecentIssues(
-//             accessToken,
-//             jiraConfig.cloudId,
-//             projectKey,
-//             parseInt(maxResults)
-//         )
-
-//         res.json(issues)
-//     } catch (err) {
-//         loggerService.error('Cannot get recent issues:', err)
-//         res.status(500).send({ err: err.message || 'Failed to fetch recent issues' })
-//     }
-// }
 
 export async function getIdentityHubTickets(req, res) {
     try {
         const { maxResults = 10, projectKey } = req.query
-        const loggedinUser = req.loggedinUser
-
-        if (!loggedinUser) {
-            return res.status(401).send({ err: 'Not authenticated' })
-        }
-
-        const user = await userService.getById(loggedinUser._id)
-        const jiraConfig = user.config?.jira
-
-        if (!jiraConfig) {
-            return res.status(400).send({ err: 'Jira not connected' })
-        }
-
-        // Decrypt tokens
-        const { accessToken, refreshToken, expiresAt } = jiraService.decryptTokens(jiraConfig)
-
-        // Check if token expired and refresh if needed
-        let currentAccessToken = accessToken
-        if (Date.now() >= expiresAt) {
-            loggerService.info(`Access token expired for user ${loggedinUser._id}, refreshing...`)
-            const newTokens = await jiraService.refreshAccessToken(refreshToken)
-            const encrypted = jiraService.encryptTokens(newTokens)
-
-            // Update user with new tokens
-            user.config.jira = {
-                ...jiraConfig,
-                ...encrypted
-            }
-            await userService.update(user)
-
-            currentAccessToken = newTokens.access_token
-            loggerService.info(`Access token refreshed for user ${loggedinUser._id}`)
-        }
+        const { accessToken, jiraConfig } = await getValidJiraToken(req.loggedinUser)
 
         const issues = await jiraService.getIdentityHubTickets(
-            currentAccessToken,
+            accessToken,
             jiraConfig.cloudId,
             parseInt(maxResults),
             projectKey || null
@@ -431,6 +338,14 @@ export async function getIdentityHubTickets(req, res) {
         res.json(issues)
     } catch (err) {
         loggerService.error('Cannot get IdentityHub tickets:', err)
+
+        if (err.message === 'Not authenticated') {
+            return res.status(401).send({ err: 'Not authenticated' })
+        }
+        if (err.message === 'Jira not connected') {
+            return res.status(400).send({ err: 'Jira not connected' })
+        }
+
         res.status(500).send({ err: err.message || 'Failed to fetch IdentityHub tickets' })
     }
 }

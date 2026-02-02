@@ -36,7 +36,7 @@ async function generateApiKey(userId, name) {
         // Return the plain API key only once (won't be stored)
         return {
             id: result.insertedId.toString(),
-            apiKey: `ih_${apiKey}`, // Prefix for identification
+            apiKey: `ih_${apiKey}`,
             name,
             createdAt: apiKeyDoc.createdAt
         }
