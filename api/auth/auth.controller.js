@@ -8,7 +8,12 @@ export async function login(req, res) {
         const user = await authService.login(email, password)
         loggerService.info('User login: ', user)
         const loginToken = authService.getLoginToken(user)
-        res.cookie('loginToken', loginToken, { sameSite: 'Lax', httpOnly: true, secure: true, maxAge: 24 * 60 * 60 * 1000 })
+        res.cookie('loginToken', loginToken, { 
+            sameSite: 'Lax', 
+            httpOnly: true, 
+            secure: true, 
+            maxAge: 24 * 60 * 60 * 1000 
+        })
         res.json(user)
     } catch (err) {
         loggerService.error('Failed to Login ' + err)
@@ -27,7 +32,12 @@ export async function signup(req, res) {
         loggerService.info('User signup:', user)
 
         const loginToken = authService.getLoginToken(user)
-        res.cookie('loginToken', loginToken, { sameSite: 'Lax', httpOnly: true, secure: true, maxAge: 24 * 60 * 60 * 1000 })
+        res.cookie('loginToken', loginToken, { 
+            sameSite: 'Lax', 
+            httpOnly: true, 
+            secure: true, 
+            maxAge: 24 * 60 * 60 * 1000 
+        })
 
         res.json(user)
     } catch (err) {

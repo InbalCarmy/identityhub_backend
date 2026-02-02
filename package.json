@@ -20,6 +20,7 @@
     "cryptr": "^6.3.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.3",
     "mongodb": "^6.12.0",
     "node-cron": "^4.2.1",
     "openai": "^6.17.0"
