@@ -31,7 +31,7 @@ function getAuthorizationUrl(state) {
     authUrl.searchParams.append('redirect_uri', redirectUri)
     authUrl.searchParams.append('state', state)
     authUrl.searchParams.append('response_type', 'code')
-    authUrl.searchParams.append('prompt', 'consent')
+    authUrl.searchParams.append('prompt', 'select_account')
 
     return authUrl.toString()
 }
