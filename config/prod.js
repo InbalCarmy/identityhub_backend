@@ -1,7 +1,7 @@
 export default {
     dbURL: process.env.MONGO_URL,
     dbName: process.env.DB_NAME,
-    secret1: process.env.SECRET1,
+    encryption_key: process.env.ENCRYPTION_KEY,
     frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
     jira: {
         clientId: process.env.JIRA_CLIENT_ID,

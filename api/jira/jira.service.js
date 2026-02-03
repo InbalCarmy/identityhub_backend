@@ -2,7 +2,7 @@ import axios from 'axios'
 import Cryptr from 'cryptr'
 import { config } from '../../config/index.js'
 
-const cryptr = new Cryptr(config.secret1)
+const cryptr = new Cryptr(config.encryption_key)
 
 export const jiraService = {
     getAuthorizationUrl,
