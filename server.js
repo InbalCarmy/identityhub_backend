@@ -54,11 +54,15 @@ app.get('/', (req, res) => {
 
 import { loggerService} from './services/logger.service.js'
 import { schedulerService } from './services/scheduler.service.js'
+import { oauthStateService } from './services/oauth-state.service.js'
 
 const port = process.env.PORT || 3030
 
-server.listen(port, () => {
+server.listen(port, async () => {
     loggerService.info('Server is running on: ' + `http://localhost:${port}/`)
+
+    // Initialize OAuth state collection with TTL index
+    await oauthStateService.initializeCollection()
 
     // Start scheduled automation jobs
     schedulerService.startScheduledJobs()

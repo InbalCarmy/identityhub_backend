@@ -1,30 +1,14 @@
 import { jiraService } from './jira.service.js'
 import { userService } from '../user/user.service.js'
 import { loggerService } from '../../services/logger.service.js'
+import { oauthStateService } from '../../services/oauth-state.service.js'
 import { config } from '../../config/index.js'
+import crypto from "crypto"
 
-// In-memory store for OAuth state tokens 
-// Key: userId, Value: { state, expiresAt }
-const oauthStateStore = new Map()
 
-// clean expired states every 10 minutes
-setInterval(() => {
-    const now = Date.now()
-    for (const [userId, data] of oauthStateStore.entries()) {
-        if (data.expiresAt < now) {
-            oauthStateStore.delete(userId)
-        }
-    }
-}, 10 * 60 * 1000)
-
-/**
- * Helper function to get and refresh Jira access token if needed
- */
+/* Helper function to get and refresh Jira access token if needed */
 async function getValidJiraToken(loggedinUser) {
-    if (!loggedinUser) {
-        throw new Error('Not authenticated')
-    }
-
+    // loggedinUser is guaranteed to exist by requireAuth middleware
     const user = await userService.getById(loggedinUser._id)
     const jiraConfig = user.config?.jira
 
@@ -61,18 +45,13 @@ async function getValidJiraToken(loggedinUser) {
 
 export async function initiateOAuth(req, res) {
     try {
-        const loggedinUser = req.loggedinUser
-        if (!loggedinUser) {
-            return res.status(401).send({ err: 'Not authenticated' })
-        }
-        //generate random state
-        const state = Math.random().toString(36).substring(7)
+        const loggedinUser = req.loggedinUser // Guaranteed by requireAuth middleware
 
-        // Store state with user ID and expiration (5 minutes)
-        oauthStateStore.set(loggedinUser._id.toString(), {
-            state,
-            expiresAt: Date.now() + (5 * 60 * 1000) // 5 minutes
-        })
+        //Generate random state
+        const state = crypto.randomBytes(32).toString("base64url")
+
+        // Store state in database with TTL (5 minutes)
+        await oauthStateService.createState(loggedinUser._id.toString(), state, 5)
 
         const authUrl = jiraService.getAuthorizationUrl(state)
 
@@ -88,46 +67,23 @@ export async function initiateOAuth(req, res) {
 export async function handleOAuthCallback(req, res) {
     try {
         const { code, state } = req.query
-        const loggedinUser = req.loggedinUser
-
-        if (!loggedinUser) {
-            loggerService.error('OAuth callback: User not authenticated')
-            return res.redirect(`${config.frontendUrl}/jira/error?message=${encodeURIComponent('Not authenticated')}`)
-        }
+        const loggedinUser = req.loggedinUser // Guaranteed by requireAuth middleware
 
         if (!code) {
             loggerService.error('OAuth callback: Authorization code missing')
             return res.redirect(`${config.frontendUrl}/jira/error?message=${encodeURIComponent('Authorization code missing')}`)
         }
 
-        // Validate state for CSRF protection
+        // Validate state for CSRF protection (one-time use)
         const userId = loggedinUser._id.toString()
-        const storedStateData = oauthStateStore.get(userId)
+        const isValidState = await oauthStateService.validateAndDeleteState(userId, state)
 
-        if (!storedStateData) {
-            loggerService.error(`OAuth callback: No stored state found for user ${userId}`)
-            return res.redirect(`${config.frontendUrl}/jira/error?message=${encodeURIComponent('Invalid session. Please try connecting again.')}`)
+        if (!isValidState) {
+            loggerService.error(`OAuth callback: Invalid or expired state for user ${userId}`)
+            return res.redirect(`${config.frontendUrl}/jira/error?message=${encodeURIComponent('Invalid or expired session. Please try connecting again.')}`)
         }
 
-        if (storedStateData.state !== state) {
-            loggerService.error(`OAuth callback: State mismatch for user ${userId}. Expected: ${storedStateData.state}, Got: ${state}`)
-            oauthStateStore.delete(userId) 
-            return res.redirect(`${config.frontendUrl}/jira/error?message=${encodeURIComponent('Security validation failed. Please try again.')}`)
-        }
-
-        if (storedStateData.expiresAt < Date.now()) {
-            loggerService.error(`OAuth callback: State expired for user ${userId}`)
-            oauthStateStore.delete(userId)
-            return res.redirect(`${config.frontendUrl}/jira/error?message=${encodeURIComponent('Session expired. Please try connecting again.')}`)
-        }
-
-        // State is valid, remove it from store (onr time use)
-        oauthStateStore.delete(userId)
-
-        // change code for tokens
         const tokens = await jiraService.exchangeCodeForTokens(code)
-
-        // get cloud ID and site URL
         const { cloudId, siteUrl } = await jiraService.getCloudId(tokens.access_token)
 
         // Encrypt and prepare tokens for storage
@@ -156,10 +112,7 @@ export async function handleOAuthCallback(req, res) {
 
  export async function disconnect(req, res) {
     try {
-        const loggedinUser = req.loggedinUser
-        if (!loggedinUser) {
-            return res.status(401).send({ err: 'Not authenticated' })
-        }
+        const loggedinUser = req.loggedinUser // Guaranteed by requireAuth middleware
 
         const user = await userService.getById(loggedinUser._id)
         if (user.config && user.config.jira) {
@@ -178,10 +131,7 @@ export async function handleOAuthCallback(req, res) {
 
 export async function getConnectionStatus(req, res) {
     try {
-        const loggedinUser = req.loggedinUser
-        if (!loggedinUser) {
-            return res.status(401).send({ err: 'Not authenticated' })
-        }
+        const loggedinUser = req.loggedinUser // Guaranteed by requireAuth middleware
 
         const user = await userService.getById(loggedinUser._id)
         const isConnected = !!(user.config?.jira?.accessToken)
@@ -209,9 +159,6 @@ export async function getProjects(req, res) {
     } catch (err) {
         loggerService.error('Cannot get projects:', err)
 
-        if (err.message === 'Not authenticated') {
-            return res.status(401).send({ err: 'Not authenticated' })
-        }
         if (err.message === 'Jira not connected') {
             return res.status(400).send({ err: 'Jira not connected' })
         }
@@ -233,9 +180,6 @@ export async function getProjectMetadata(req, res) {
     } catch (err) {
         loggerService.error('Cannot get project metadata:', err)
 
-        if (err.message === 'Not authenticated') {
-            return res.status(401).send({ err: 'Not authenticated' })
-        }
         if (err.message === 'Jira not connected') {
             return res.status(400).send({ err: 'Jira not connected' })
         }
@@ -309,9 +253,6 @@ export async function createIssue(req, res) {
     } catch (err) {
         loggerService.error('Cannot create issue:', err)
 
-        if (err.message === 'Not authenticated') {
-            return res.status(401).send({ err: 'Not authenticated' })
-        }
         if (err.message === 'Jira not connected') {
             return res.status(400).send({ err: 'Jira not connected' })
         }
@@ -339,9 +280,6 @@ export async function getIdentityHubTickets(req, res) {
     } catch (err) {
         loggerService.error('Cannot get IdentityHub tickets:', err)
 
-        if (err.message === 'Not authenticated') {
-            return res.status(401).send({ err: 'Not authenticated' })
-        }
         if (err.message === 'Jira not connected') {
             return res.status(400).send({ err: 'Jira not connected' })
         }

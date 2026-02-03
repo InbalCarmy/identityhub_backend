@@ -33,8 +33,13 @@ function getAuthorizationUrl(state) {
     authUrl.searchParams.append('response_type', 'code')
     authUrl.searchParams.append('prompt', 'consent')
 
-    console.log("url:", authUrl);
-    
+    console.log("=== JIRA OAUTH DEBUG ===");
+    console.log("Client ID:", clientId);
+    console.log("Redirect URI:", redirectUri);
+    console.log("Scopes:", scopes);
+    console.log("Full URL:", authUrl.toString());
+    console.log("========================");
+
     return authUrl.toString()
 }
 
