@@ -6,9 +6,4 @@ logs/
 *.log
 
 # Documentation files
-API_DOCUMENTATION.md
-SETUP_GUIDE.md
-
-
-BLOG_DIGEST_AUTOMATION.md
-AUTOMATION_SETUP.md
+INTREVIEWER_GUIDE.md

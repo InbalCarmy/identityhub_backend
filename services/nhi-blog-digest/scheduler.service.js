@@ -39,7 +39,7 @@ function startScheduledJobs() {
         job: blogDigestJob
     })
 
-    loggerService.info(`✓ Started ${scheduledJobs.length} scheduled job(s):`)
+    loggerService.info(`Started ${scheduledJobs.length} scheduled job(s):`)
     scheduledJobs.forEach(job => {
         loggerService.info(`  - ${job.name}: ${job.schedule}`)
     })
