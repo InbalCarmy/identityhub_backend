@@ -1,6 +1,6 @@
 import cron from 'node-cron'
-import { blogDigestAutomationService } from './nhi-blog-digest/blog-digest-automation.service.js'
-import { loggerService } from './logger.service.js'
+import { blogDigestAutomationService } from './blog-digest-automation.service.js'
+import { loggerService } from '../logger.service.js'
 
 /* Scheduler Service for running automated tasks */
 export const schedulerService = {
@@ -14,9 +14,15 @@ let scheduledJobs = []
 function startScheduledJobs() {
     loggerService.info('Starting scheduled automation jobs...')
 
-    // Schedule: Run blog digest every Monday at 9:00 AM
-    const blogDigestJob = cron.schedule('0 9 * * 1', async () => {
-        loggerService.info('Triggered: Weekly Blog Digest (Monday 9:00 AM)')
+    // Get current time in UTC for debugging
+    const now = new Date()
+    loggerService.info(`Current UTC time: ${now.toISOString()}`)
+    loggerService.info(`Current UTC time (readable): ${now.toUTCString()}`)
+
+    // Schedule: Run blog digest every Tuesday at 3:00 PM UTC
+    // For testing: Change to '* * * * *' to run every minute
+    const blogDigestJob = cron.schedule('0 15 * * 2', async () => {
+        loggerService.info('Triggered: Weekly Blog Digest (Tuesday 3:00 PM UTC)')
         try {
             await blogDigestAutomationService.runBlogDigest()
         } catch (err) {
@@ -29,7 +35,7 @@ function startScheduledJobs() {
 
     scheduledJobs.push({
         name: 'Weekly Blog Digest',
-        schedule: 'Every Monday at 9:00 AM UTC',
+        schedule: 'Every Tuesday at 3:00 PM UTC',
         job: blogDigestJob
     })
 

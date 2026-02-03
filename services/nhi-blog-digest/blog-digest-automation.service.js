@@ -5,7 +5,7 @@ import { userService } from '../../api/user/user.service.js'
 import { loggerService } from '../logger.service.js'
 import { config } from '../../config/index.js'
 
-/**
+/*
  * NHI Blog Digest Automation Service
  * Fetches latest Oasis blog post, generates AI summary, and creates Jira ticket
  */
@@ -58,30 +58,21 @@ async function generateSummary(blogPost) {
     return summary
 }
 
-/* Gets the user to use for automation */
+/* Gets the user to use for automation (specific user, admin, or first available) */
 async function getUserForAutomation(userId) {
     loggerService.info('Step 3: Retrieving user credentials')
 
+    // If specific userId provided, use that user
     if (userId) {
-        return await getSpecificUser(userId)
-    } else {
-        return await getAutomationUser()
+        const user = await userService.getById(userId)
+        if (!user || !user.config?.jira) {
+            throw new Error('User not found or Jira not connected')
+        }
+        loggerService.info(`Using user: ${user.email || user._id}`)
+        return user
     }
-}
 
-/* Gets a specific user by ID and validates Jira connection */
-async function getSpecificUser(userId) {
-    const user = await userService.getById(userId)
-    if (!user || !user.config?.jira) {
-        throw new Error('User not found or Jira not connected')
-    }
-    loggerService.info(`Using user: ${user.email || user._id}`)
-    return user
-}
-
-/* Gets the configured admin user or first user with Jira for scheduled automation */
-async function getAutomationUser() {
-    // First try configured admin user
+    // Try configured admin user
     const adminUserId = config.automation?.adminUserId
     if (adminUserId) {
         const adminUser = await userService.getById(adminUserId)
@@ -91,7 +82,7 @@ async function getAutomationUser() {
         }
     }
 
-    // If no admin user or admin doesn't have Jira, find any user with Jira
+    // Fall back to first user with Jira connected
     loggerService.info('Finding first user with Jira connected...')
     const user = await findUserWithJira()
     if (!user) {
@@ -306,20 +297,6 @@ function formatJiraDescription(blogPost, summary) {
                     {
                         type: 'text',
                         text: blogPost.author
-                    }
-                ]
-            },
-            {
-                type: 'paragraph',
-                content: [
-                    {
-                        type: 'text',
-                        text: 'Published: ',
-                        marks: [{ type: 'strong' }]
-                    },
-                    {
-                        type: 'text',
-                        text: blogPost.date
                     }
                 ]
             },

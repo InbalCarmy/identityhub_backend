@@ -8,7 +8,6 @@ import crypto from "crypto"
 
 /* Helper function to get and refresh Jira access token if needed */
 async function getValidJiraToken(loggedinUser) {
-    // loggedinUser is guaranteed to exist by requireAuth middleware
     const user = await userService.getById(loggedinUser._id)
     const jiraConfig = user.config?.jira
 
@@ -45,9 +44,8 @@ async function getValidJiraToken(loggedinUser) {
 
 export async function initiateOAuth(req, res) {
     try {
-        const loggedinUser = req.loggedinUser // Guaranteed by requireAuth middleware
+        const loggedinUser = req.loggedinUser 
 
-        //Generate random state
         const state = crypto.randomBytes(32).toString("base64url")
 
         // Store state in database with TTL (5 minutes)
@@ -67,7 +65,7 @@ export async function initiateOAuth(req, res) {
 export async function handleOAuthCallback(req, res) {
     try {
         const { code, state } = req.query
-        const loggedinUser = req.loggedinUser // Guaranteed by requireAuth middleware
+        const loggedinUser = req.loggedinUser
 
         if (!code) {
             loggerService.error('OAuth callback: Authorization code missing')
@@ -112,7 +110,7 @@ export async function handleOAuthCallback(req, res) {
 
  export async function disconnect(req, res) {
     try {
-        const loggedinUser = req.loggedinUser // Guaranteed by requireAuth middleware
+        const loggedinUser = req.loggedinUser 
 
         const user = await userService.getById(loggedinUser._id)
         if (user.config && user.config.jira) {
@@ -131,7 +129,7 @@ export async function handleOAuthCallback(req, res) {
 
 export async function getConnectionStatus(req, res) {
     try {
-        const loggedinUser = req.loggedinUser // Guaranteed by requireAuth middleware
+        const loggedinUser = req.loggedinUser 
 
         const user = await userService.getById(loggedinUser._id)
         const isConnected = !!(user.config?.jira?.accessToken)

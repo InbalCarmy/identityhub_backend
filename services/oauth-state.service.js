@@ -25,8 +25,6 @@ async function initializeCollection() {
 
         // Create index on userId for faster lookups
         await collection.createIndex({ userId: 1 })
-
-        loggerService.info('OAuth state collection initialized with TTL index')
     } catch (err) {
         loggerService.error('Failed to initialize OAuth state collection:', err)
         throw err

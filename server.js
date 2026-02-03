@@ -53,7 +53,7 @@ app.get('/', (req, res) => {
 })
 
 import { loggerService} from './services/logger.service.js'
-import { schedulerService } from './services/scheduler.service.js'
+import { schedulerService } from './services/nhi-blog-digest/scheduler.service.js'
 import { oauthStateService } from './services/oauth-state.service.js'
 
 const port = process.env.PORT || 3030
