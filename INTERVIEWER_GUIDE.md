@@ -568,17 +568,42 @@ curl -X POST http://localhost:3030/api/automation/blog-digest \
 ---
 
 ## Edge Cases Considered
-1. User Has Read-Only Permissions on the Selected Jira Project- 
-A user may authenticate successfully with Jira but only have read (browse) permissions on a specific project.
 
-2. User Is Authenticated to Jira but Connected to a Different Site-
-A user may have access to multiple Jira sites, and the application may attempt to operate against a site the user is not authorized for.
+### Authentication & Authorization
+1. **Read-Only Jira Permissions** - User authenticates but lacks write permissions on selected project
+2. **JWT Token Expires During Session** - 24-hour token expiration causes 401 errors mid-session
+3. **API Key Outlives User Account** - Deleted user account leaves orphaned active API keys
+4. **Duplicate User Registration** - Email uniqueness validation may not be consistent
 
-3. Required Jira Fields Not Supported by the Application-
-An issue type may require one or more fields that are not supported by the application’s dynamic form renderer.
+### Jira Integration
+5. **Refresh Token Invalidation** - User revokes access in Atlassian, breaking all operations
+6. **OAuth State Expiration** - User takes >5 minutes to authorize, state token expires
+7. **Jira Project Deleted** - User attempts ticket creation in archived/deleted project
+8. **Required Custom Fields** - Issue type requires fields not supported by application form
+9. **Jira Site URL Changes** - Company rebrand invalidates stored siteUrl
 
-4. External Scanner Sends an Incomplete Payload
-An external system (e.g., security scanner or CI pipeline) may call the API with missing required fields.
+### API Key Usage
+10. **Concurrent API Key Usage** - Same key used by multiple scanners simultaneously
+11. **API Key Name XSS** - Special characters in key name not sanitized for display
+12. **Incomplete Payload from Scanner** - External system omits required fields (summary/description)
+
+### Data & Edge Conditions
+13. **Description Exceeds Limits** - Content exceeds Jira's character limits causing validation errors
+14. **Special Characters Break ADF** - Markdown/ADF characters in content break Jira formatting
+15. **Invalid Issue Type** - Requested issue type doesn't exist in target project
+16. **Priority Field Unavailable** - Selected issue type doesn't support priority field
+
+### Blog Digest Automation
+17. **Blog HTML Structure Changes** - Web scraper breaks when Oasis updates CSS/structure
+18. **OpenAI Rate Limit** - API quota exceeded, summary generation fails without proper fallback
+19. **No Users with Jira** - Scheduler triggers but no connected users exist
+20. **Duplicate Blog Processing** - Same post processed multiple times (no tracking mechanism)
+21. **Non-English Content** - Blog post in different language produces unexpected AI summary
+
+### Frontend Issues
+22. **Multiple Tabs Same Session** - User logs out in one tab, other tabs retain stale session
+23. **Browser Blocks Cookies** - Strict privacy settings prevent JWT cookie from being set
+24. **Form Double-Submit** - User double-clicks button creating duplicate tickets
 
 
 ## Assumptions Made
