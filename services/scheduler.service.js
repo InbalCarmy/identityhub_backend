@@ -1,5 +1,5 @@
 import cron from 'node-cron'
-import { blogDigestAutomationService } from './blog-digest-automation.service.js'
+import { blogDigestAutomationService } from './nhi-blog-digest/blog-digest-automation.service.js'
 import { loggerService } from './logger.service.js'
 
 /* Scheduler Service for running automated tasks */

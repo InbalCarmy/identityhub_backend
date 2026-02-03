@@ -3,6 +3,8 @@ import { loggerService } from '../../services/logger.service.js'
 import crypto from 'crypto'
 import { ObjectId } from 'mongodb'
 
+const API_KEY_PREFIX = 'ih_'
+
 export const apikeyService = {
     generateApiKey,
     validateApiKey,
@@ -36,7 +38,7 @@ async function generateApiKey(userId, name) {
         // Return the plain API key only once (won't be stored)
         return {
             id: result.insertedId.toString(),
-            apiKey: `ih_${apiKey}`,
+            apiKey: `${API_KEY_PREFIX}${apiKey}`,
             name,
             createdAt: apiKeyDoc.createdAt
         }
@@ -52,7 +54,9 @@ async function generateApiKey(userId, name) {
 async function validateApiKey(apiKey) {
     try {
         // Remove prefix if present
-        const cleanKey = apiKey.startsWith('ih_') ? apiKey.substring(3) : apiKey
+        const cleanKey = apiKey.startsWith(API_KEY_PREFIX)
+            ? apiKey.substring(API_KEY_PREFIX.length)
+            : apiKey
         const hashedKey = hashApiKey(cleanKey)
 
         const collection = await dbService.getCollection('apikeys')

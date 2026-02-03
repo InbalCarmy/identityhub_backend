@@ -174,7 +174,6 @@ export async function getProjectMetadata(req, res) {
         const { accessToken, jiraConfig } = await getValidJiraToken(req.loggedinUser)
 
         const metadata = await jiraService.getProjectMetadata(accessToken, jiraConfig.cloudId, projectKey)
-        console.log("metadata:", metadata.projects[0].issueTypes);
 
         res.json(metadata)
     } catch (err) {

@@ -1,9 +1,9 @@
 import { blogScraperService } from './blog-scraper.service.js'
 import { aiSummaryService } from './ai-summary.service.js'
-import { jiraService } from '../api/jira/jira.service.js'
-import { userService } from '../api/user/user.service.js'
-import { loggerService } from './logger.service.js'
-import { config } from '../config/index.js'
+import { jiraService } from '../../api/jira/jira.service.js'
+import { userService } from '../../api/user/user.service.js'
+import { loggerService } from '../logger.service.js'
+import { config } from '../../config/index.js'
 
 /**
  * NHI Blog Digest Automation Service

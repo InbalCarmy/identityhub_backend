@@ -1,6 +1,6 @@
 import axios from 'axios'
 import * as cheerio from 'cheerio'
-import { loggerService } from './logger.service.js'
+import { loggerService } from '../logger.service.js'
 
 /**
  * Service for scraping blog posts from Oasis Security blog

@@ -1,6 +1,6 @@
 import OpenAI from 'openai'
-import { loggerService } from './logger.service.js'
-import { config } from '../config/index.js'
+import { loggerService } from '../logger.service.js'
+import { config } from '../../config/index.js'
 
 /**
  * Service for generating AI-powered summaries using OpenAI

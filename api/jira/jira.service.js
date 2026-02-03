@@ -33,13 +33,6 @@ function getAuthorizationUrl(state) {
     authUrl.searchParams.append('response_type', 'code')
     authUrl.searchParams.append('prompt', 'consent')
 
-    console.log("=== JIRA OAUTH DEBUG ===");
-    console.log("Client ID:", clientId);
-    console.log("Redirect URI:", redirectUri);
-    console.log("Scopes:", scopes);
-    console.log("Full URL:", authUrl.toString());
-    console.log("========================");
-
     return authUrl.toString()
 }
 
@@ -154,7 +147,6 @@ async function getProjectMetadata(accessToken, cloudId, projectKey) {
                 }
             }
         )
-        console.log('Full metadata response:', JSON.stringify(response.data, null, 2))
         return response.data
     } catch (err) {
         console.error('Error getting project metadata:', err.response?.data || err.message)

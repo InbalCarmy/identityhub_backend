@@ -1,4 +1,4 @@
-import { blogDigestAutomationService } from '../../services/blog-digest-automation.service.js'
+import { blogDigestAutomationService } from '../../services/nhi-blog-digest/blog-digest-automation.service.js'
 import { loggerService } from '../../services/logger.service.js'
 
 /**
